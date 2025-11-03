@@ -1,0 +1,1 @@
+# Core functionality modules for PDF accessibility testing

@@ -1,0 +1,3 @@
+www_adminfin_calstatela_edu_spider
+calstatela_edu_spider
+academicsenate_calstatela_edu_spider
