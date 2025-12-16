@@ -1,0 +1,1 @@
+select * from site_user where is_manager = true;

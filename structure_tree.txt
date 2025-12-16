@@ -1,0 +1,84 @@
+.
+├── config
+│   ├── priority_profiles.py
+│   ├── README.md
+│   └── sites.py
+├── crawlers
+│   ├── README.md
+│   └── sf_state_pdf_scan
+│       ├── __init__.py
+│       ├── run_all_spiders.py
+│       ├── run_spider_by_name.py
+│       ├── scrapy.cfg
+│       └── sf_state_pdf_scan
+├── data
+│   ├── employees.csv
+│   ├── employees1.csv
+│   ├── managers.csv
+│   ├── README.md
+│   ├── site_assignments.csv
+│   └── sites.csv
+├── docs
+│   ├── info
+│   │   ├── ADA_Title_II_Accessible_Content_Responsibilities.txt
+│   │   ├── D_Part_PDF_Decision_Checklist.txt
+│   │   └── Drupal_PDF_Accessibility_Review.txt
+│   ├── instructions.md
+│   └── PROJECT_STRUCTURE.md
+├── master_functions.py
+├── output
+│   ├── backups
+│   ├── emails
+│   ├── README.md
+│   └── reports
+│       └── monthly_report.html
+├── QUICKSTART.md
+├── README.md
+├── sf_state_pdf_website_scan.iml
+├── sql
+│   ├── all_pdf_stats.sql
+│   ├── delete_duplicates.sql
+│   ├── duplicate_counter.sql
+│   ├── get_admin_contacts.sql
+│   ├── get_all_pdfs.sql
+│   ├── get_all_sites_with_pdfs.sql
+│   ├── get_all_sites.sql
+│   ├── get_all_users_with_pdf_files.sql
+│   ├── get_failures_by_site_id.sql
+│   ├── get_pdf_reports_by_site_name.sql
+│   ├── get_pdfs_by_domain_name.sql
+│   ├── get_pdfs_by_user_id.sql
+│   ├── get_site_id_by_name.sql
+│   ├── get_sites_by_id.sql
+│   ├── README.md
+│   ├── site_ranks.sql
+│   ├── sum_all_pdf_stats.sql
+│   ├── update_scan_by_removing_old_duplicates.sql
+│   └── user_ranks.sql
+├── src
+│   ├── __init__.py
+│   ├── communication
+│   │   ├── __init__.py
+│   │   ├── admin_email.py
+│   │   ├── communications.py
+│   │   └── pdf_email.py
+│   ├── core
+│   │   ├── __init__.py
+│   │   ├── conformance_checker.py
+│   │   ├── database.py
+│   │   └── filters.py
+│   ├── data_management
+│   │   ├── __init__.py
+│   │   ├── data_export.py
+│   │   └── data_import.py
+│   ├── reporting
+│   │   ├── __init__.py
+│   │   └── html_report.py
+│   └── utilities
+│       ├── __init__.py
+│       └── tools.py
+├── structure_tree.txt
+└── temp
+    └── README.md
+
+20 directories, 62 files
