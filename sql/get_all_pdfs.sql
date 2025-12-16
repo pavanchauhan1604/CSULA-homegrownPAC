@@ -1,1 +1,0 @@
-select * from drupal_pdf_files;

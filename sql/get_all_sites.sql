@@ -1,1 +1,0 @@
-select domain_name from drupal_site;
