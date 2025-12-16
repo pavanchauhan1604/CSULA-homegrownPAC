@@ -5,51 +5,26 @@ After generating PDF accessibility reports, you need to send HTML emails to site
 
 ---
 
-## 📧 Method 1: Python SMTP (Recommended)
+## 🪟 Method 1: Windows Outlook Automation (Recommended)
 
-### Quick Start
-```bash
-python3 scripts/send_emails.py
-```
+Use this if Office 365 SMTP AUTH is disabled (e.g., `535 5.7.139`) and you have access to a Windows PC with Outlook Desktop.
 
-### Cal State LA Email Setup
+**Requirements**
+- Windows
+- Outlook Desktop installed and signed in to the sending mailbox
+- `pywin32` installed in the Python environment used on Windows (installed via `requirements.txt`, or run: `python -m pip install pywin32`)
 
-#### For Office 365 (Outlook/Cal State LA Email)
-- **SMTP Server**: `smtp.office365.com`
-- **Port**: `587`
-- **Username**: Your full Cal State LA email (e.g., `pchauha5@calstatela.edu`)
-- **Password**: Your Cal State LA email password
-- **Security**: TLS (handled automatically)
+**How it works**
+- The script controls Outlook via COM to create/send messages.
+- This typically works with MFA because Outlook is already authenticated.
 
-#### For Gmail (Alternative)
-- **SMTP Server**: `smtp.gmail.com`
-- **Port**: `587`
-- **Username**: Your Gmail address
-- **Password**: **App Password** (not regular password)
-  - Go to: https://myaccount.google.com/apppasswords
-  - Create app password for "Mail"
-  - Use this 16-character password instead
+**Enable it** (in `config.py`)
+- This project uses Outlook automation only (SMTP has been removed).
+- Optional:
+    - `OUTLOOK_SAVE_AS_MSG = True` to save `.msg` drafts instead of sending
+    - `OUTLOOK_DISPLAY_ONLY = True` to open drafts for review
+    - `OUTLOOK_SENT_ON_BEHALF_OF = "..."` only if you have Exchange permissions
 
-### Example Usage
-```bash
-$ python3 scripts/send_emails.py
-
-Choose mode:
-  1. Send emails (requires SMTP setup)
-  2. Test mode (save to files only)
-
-Choice (1/2): 1
-SMTP Server: smtp.office365.com
-SMTP Port: 587
-Your Cal State LA email: pchauha5@calstatela.edu
-SMTP Username: pchauha5@calstatela.edu
-SMTP Password: [hidden]
-
-1. Sending to pchauha5@calstatela.edu...
-   ✅ Sent successfully!
-```
-
----
 
 ## 📋 Method 2: Manual Email (Simplest)
 
@@ -61,13 +36,13 @@ SMTP Password: [hidden]
 
 2. **Copy the content**
    - Browser opens with formatted email
-   - Press `Cmd+A` to select all
-   - Press `Cmd+C` to copy
+    - Press `Cmd+A` (macOS) or `Ctrl+A` (Windows) to select all
+    - Press `Cmd+C` (macOS) or `Ctrl+C` (Windows) to copy
 
 3. **Paste in email client**
    - Open Gmail/Outlook web or desktop
    - Compose new email
-   - Click in message body and press `Cmd+V`
+    - Click in message body and press `Cmd+V` (macOS) or `Ctrl+V` (Windows)
    - The HTML will paste with all formatting intact!
 
 4. **Send**
@@ -134,33 +109,10 @@ fi
 
 ## 🔒 Security Best Practices
 
-### Never Commit Passwords!
-Create a `.env` file for credentials:
+### Never Commit Credentials
 
-```bash
-# .env (add to .gitignore!)
-SMTP_SERVER=smtp.office365.com
-SMTP_PORT=587
-SMTP_USERNAME=pchauha5@calstatela.edu
-SMTP_PASSWORD=your_password_here
-```
-
-Then use python-dotenv:
-```bash
-pip install python-dotenv
-```
-
-```python
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-smtp_config = {
-    'server': os.getenv('SMTP_SERVER'),
-    'username': os.getenv('SMTP_USERNAME'),
-    'password': os.getenv('SMTP_PASSWORD')
-}
-```
+- Keep any mailbox-related settings (e.g., shared mailbox “send on behalf” addresses) out of version control if they are sensitive.
+- This project does not use SMTP credentials.
 
 ---
 
@@ -196,7 +148,7 @@ python3 scripts/send_emails.py
 - **Email in spam**: Add sender to address book
 - **HTML not rendering**: Some email clients block external CSS
 - **Links broken**: Ensure PDF URLs are publicly accessible
-- **Authentication failed**: Check username/password, may need app password
+- **Outlook sending fails**: Ensure Outlook Desktop is installed, signed in, and you have any required “send on behalf” permissions
 
 ---
 
@@ -204,19 +156,9 @@ python3 scripts/send_emails.py
 
 ### For ongoing use:
 1. Set up dedicated service account (e.g., `pdf-reports@calstatela.edu`)
-2. Use that account's SMTP credentials
-3. Store credentials securely (environment variables or secrets manager)
-4. Schedule workflow with cron or Task Scheduler
-5. Enable email sending as final step
-
-### Example Cron Job (monthly):
-```bash
-# Edit crontab
-crontab -e
-
-# Run on 1st of every month at 9 AM
-0 9 1 * * cd /Users/pavan/Work/CSULA-homegrownPAC && ./scripts/run_workflow.sh --auto-send
-```
+2. Ensure Outlook Desktop is configured for that account on a Windows machine
+3. Schedule the workflow using Windows Task Scheduler
+4. Enable email sending as final step
 
 ---
 
@@ -226,4 +168,4 @@ For Cal State LA IT email configuration:
 - **IT Help Desk**: https://www.calstatela.edu/its
 - **Email Support**: itsupport@calstatela.edu
 
-For SMTP issues, contact your campus IT department.
+For Outlook automation issues, contact your campus IT department.

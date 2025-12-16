@@ -15,7 +15,7 @@ This document provides a comprehensive comparison between the original **SF Stat
 ### Key Improvements at a Glance:
 - ✅ **Modular Architecture:** Flat file structure → Professional package organization
 - ✅ **Centralized Configuration:** Hardcoded paths → Single config.py file
-- ✅ **Enhanced Email System:** Broken SMTP → Scalable summary-based emails
+- ✅ **Enhanced Email System:** SMTP removed → Windows Outlook automation + summary-based emails
 - ✅ **Better Error Handling:** Silent failures → Comprehensive error tracking
 - ✅ **Improved Reporting:** Fixed Excel bugs, added priority system refinements
 - ✅ **Production Scripts:** Manual execution → Automated workflow scripts
@@ -225,7 +225,7 @@ def validate_config():
    - ❌ Poor mobile display experience
 
 3. **No Institutional Authentication Support:**
-   - ❌ Assumed simple SMTP would work
+    - ❌ Assumed direct email authentication would work
    - ❌ No support for MFA/2FA (required by Cal State LA)
    - ❌ No OAuth2 implementation
    - ❌ App passwords not documented or configured
@@ -303,14 +303,14 @@ def validate_config():
    - Created `setup/EMAIL_SENDING_GUIDE.md` with screenshots
    - Step-by-step instructions for Outlook Web
    - Troubleshooting section for common issues
-   - Alternative methods documented (SMTP, Gmail, etc.)
+    - Alternative methods documented (manual review, Outlook automation, etc.)
 
 **Before vs After Comparison:**
 
 | Feature | SF State (Old) | CSULA (New) |
 |---------|---------------|-------------|
 | Platform Support | Windows only | macOS, Windows, Linux |
-| Authentication | Broken SMTP | Manual (bypasses auth issues) |
+| Authentication | SMTP removed (blocked by tenant policy) | Outlook automation (uses signed-in Outlook) |
 | Email Size (100 PDFs) | ~2 MB | ~50 KB |
 | MFA/2FA Support | ❌ No | ✅ Yes (manual method) |
 | Error Handling | Silent failures | Clear instructions |
@@ -1096,7 +1096,7 @@ def get_priority_level(data: Dict[str, any]) -> Tuple[str, str, str]:
 4. **`setup/EMAIL_SENDING_GUIDE.md`** - Email Instructions
    - Manual sending process (with screenshots)
    - Outlook Web setup
-   - SMTP configuration (optional)
+    - Outlook Desktop automation (Windows)
    - Common issues and solutions
 
 5. **`setup/REORGANIZATION_SUMMARY.md`** - Migration Guide

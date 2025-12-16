@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""DEPRECATED legacy file.
+
+This module contains older Windows-only Outlook COM examples kept for reference.
+
+Use scripts/send_emails.py for the supported Outlook automation workflow.
+"""
+
+# Original Windows-only implementation below
+# DO NOT USE - Not compatible with macOS or Linux
+
+"""
 import sqlite3
 import os
 import re
@@ -11,6 +22,10 @@ from openpyxl import load_workbook
 def sanitize_filename(filename):
     # Remove characters that are invalid in file names.
     return re.sub(r'[\\/:"*?<>|]+', "", filename)
+
+... [rest of Windows-only code commented out]
+"""
+
 
 def run_sql_query(sql_file_path, template_html):
     # Open and read the SQL file.

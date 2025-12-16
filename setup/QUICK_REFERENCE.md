@@ -3,10 +3,12 @@
 ## 🚀 Quick Start
 
 ```bash
-# Complete fresh run (recommended for first time)
-cd /Users/pavan/Work/CSULA-homegrownPAC
+# macOS/Linux: complete fresh run (recommended for first time)
+cd /path/to/CSULA-homegrownPAC
 ./scripts/fresh_start.sh && ./scripts/run_workflow.sh
 ```
+
+**Windows (PowerShell):** follow the step-by-step workflow in `setup/WINDOWS_INSTALLATION_GUIDE.md`.
 
 ---
 
@@ -52,6 +54,23 @@ open output/emails/*.html         # Email previews
 sqlite3 drupal_pdfs.db            # Open database
 ```
 
+**Windows (PowerShell) equivalents:**
+
+```powershell
+# View configuration
+python -c "import config; config.print_config()"
+
+# Generate email previews (HTML)
+python scripts\generate_emails.py
+
+# Send emails (Windows + Outlook Desktop)
+python scripts\send_emails.py
+
+# Open outputs in File Explorer
+explorer .\output\scans
+explorer .\output\emails
+```
+
 ---
 
 ## 📊 Database Queries
@@ -88,7 +107,7 @@ GROUP BY s.domain_name;
 | Issue | Solution |
 |-------|----------|
 | "No such table" error | Run `python3 scripts/setup_test_environment.py` |
-| "verapdf: command not found" | Install: `brew install verapdf` |
+| "verapdf: command not found" | Install VeraPDF and ensure it is in PATH (Windows installer: https://software.verapdf.org/) |
 | Spiders already completed | Run `./scripts/fresh_start.sh` |
 | SSL certificate errors | Already handled (SSL verification disabled) |
 | Duplicate PDFs | Normal - same PDF on different pages |

@@ -111,30 +111,47 @@ Should output: `veraPDF 1.28.0` or higher
 
 ## 3️⃣ Install Python Packages
 
-### All Packages (One Command)
+### Recommended: Use a virtual environment
+
+From the project root:
+
+**macOS/Linux:**
 ```bash
-pip3 install scrapy requests beautifulsoup4 lxml openpyxl pikepdf pdfminer.six chardet urllib3
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
 ```
 
-### Individual Packages (If Above Fails)
-```bash
-pip3 install scrapy
-pip3 install requests
-pip3 install beautifulsoup4
-pip3 install lxml
-pip3 install openpyxl
-pip3 install pikepdf
-pip3 install pdfminer.six
-pip3 install chardet
-pip3 install urllib3
+**Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 ```
+
+If PowerShell blocks activation:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+### Install all dependencies (one command)
+
+This project uses `requirements.txt` at the repo root:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Notes:
+- On Windows, this installs `pywin32` automatically (required for Outlook Desktop automation).
+- On macOS/Linux, `pywin32` is skipped.
 
 ### Verify Installations
 ```bash
-python3 -c "import scrapy; print('Scrapy:', scrapy.__version__)"
-python3 -c "import requests; print('Requests:', requests.__version__)"
-python3 -c "import openpyxl; print('OpenPyXL:', openpyxl.__version__)"
-python3 -c "import pikepdf; print('PikePDF:', pikepdf.__version__)"
+python -c "import scrapy; print('Scrapy:', scrapy.__version__)"
+python -c "import requests; print('Requests:', requests.__version__)"
+python -c "import openpyxl; print('OpenPyXL:', openpyxl.__version__)"
+python -c "import pikepdf; print('PikePDF:', pikepdf.__version__)"
 ```
 
 ### Troubleshooting Package Installation
@@ -142,13 +159,13 @@ python3 -c "import pikepdf; print('PikePDF:', pikepdf.__version__)"
 #### Issue: "Permission denied"
 ```bash
 # Solution: Use --user flag
-pip3 install --user scrapy requests beautifulsoup4 lxml openpyxl pikepdf pdfminer.six chardet urllib3
+python -m pip install --user -r requirements.txt
 ```
 
 #### Issue: "Command not found: pip3"
 ```bash
 # Solution: Use python3 -m pip
-python3 -m pip install scrapy requests beautifulsoup4 lxml openpyxl pikepdf pdfminer.six chardet urllib3
+python -m pip install -r requirements.txt
 ```
 
 #### Issue: "SSL: CERTIFICATE_VERIFY_FAILED"
@@ -182,6 +199,8 @@ cd /Users/pavan/Work/CSULA-homegrownPAC
 ---
 
 ## 5️⃣ Make Scripts Executable
+
+This step is **macOS/Linux only**. Windows users can skip this and follow `setup/WINDOWS_INSTALLATION_GUIDE.md`.
 
 ```bash
 cd /Users/pavan/Work/CSULA-homegrownPAC

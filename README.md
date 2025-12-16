@@ -24,12 +24,15 @@ CSULA-homegrownPAC/
 │   │   └── doa_import.py        # DOA-specific imports
 │   ├── reporting/               # Report generation
 │   │   └── html_report.py       # HTML dashboard generation
-│   ├── communication/           # Email automation
+│   ├── communication/           # Email automation (Outlook - Windows)
 │   │   ├── communications.py    # Email content generation
-│   │   ├── pdf_email.py         # Email sending via Outlook
-│   │   └── admin_email.py       # Admin notifications
+│   │   ├── outlook_sender.py    # Outlook COM email sending (Windows-only)
+│   │   ├── pdf_email.py         # (Deprecated - reference only)
+│   │   └── admin_email.py       # (Deprecated - reference only)
 │   └── utilities/               # Helper utilities
 │       └── tools.py             # Utility functions
+├── scripts/                     # Automation scripts
+│   └── send_emails.py           # Email sending script (Outlook - Windows)
 ├── crawlers/                    # Web scraping
 │   └── sf_state_pdf_scan/       # Scrapy project
 │       ├── run_all_spiders.py   # Spider orchestrator
@@ -77,7 +80,13 @@ python master_functions.py
 # Then call: build_all_xcel_reports()
 ```
 
-### 4. Generate HTML Dashboard
+### 4. Send Emails
+```bash
+# Send PDF accessibility reports via Outlook automation (Windows-only)
+python3 scripts/send_emails.py
+```
+
+### 5. Generate HTML Dashboard
 ```bash
 python src/reporting/html_report.py
 ```
@@ -91,7 +100,7 @@ python src/reporting/html_report.py
 - **Box.com Integration**: Special handling for Box shared links
 - **Excel Report Generation**: Formatted reports with hyperlinks and validation
 - **HTML Dashboard**: Comprehensive overview with metrics
-- **Email Automation**: Personalized emails to content managers
+- **Email Automation**: Windows Outlook desktop automation (no SMTP)
 - **404 Tracking**: Monitors broken links and removed PDFs
 - **Duplicate Detection**: SHA-256 hashing prevents redundant testing
 
@@ -101,6 +110,16 @@ python src/reporting/html_report.py
 - VeraPDF (external CLI tool)
 - SQLite
 - Libraries: scrapy, pikepdf, pdfminer.six, openpyxl, jinja2, beautifulsoup4, requests
+
+### Install Python dependencies
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### Windows
+
+For a complete Windows setup (PowerShell + venv + VeraPDF + Outlook Desktop sending), see: `setup/WINDOWS_INSTALLATION_GUIDE.md`.
 
 ## Compliance Target
 

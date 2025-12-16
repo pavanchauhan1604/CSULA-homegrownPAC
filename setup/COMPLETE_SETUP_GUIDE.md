@@ -62,15 +62,36 @@ verapdf --version
 
 ### Step 1: Navigate to Project Directory
 ```bash
-cd /Users/pavan/Work/CSULA-homegrownPAC
+# macOS/Linux example
+cd /path/to/CSULA-homegrownPAC
+
+# Windows (PowerShell) example
+# cd C:\path\to\CSULA-homegrownPAC
 ```
 
 ### Step 2: Install Python Packages
 
-Run this command to install all required packages:
+Recommended: use a virtual environment and install from `requirements.txt`.
 
+**macOS/Linux:**
 ```bash
-pip3 install scrapy requests beautifulsoup4 lxml openpyxl pikepdf pdfminer.six chardet urllib3
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+```
+
+**Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+If PowerShell blocks activation:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
 **Required Packages:**
@@ -79,17 +100,25 @@ pip3 install scrapy requests beautifulsoup4 lxml openpyxl pikepdf pdfminer.six c
 - `beautifulsoup4` - HTML parsing
 - `lxml` - XML processing
 - `openpyxl` - Excel file generation
+- `jinja2` - HTML report templating
+- `pandas` - DOA imports / data handling
 - `pikepdf` - PDF manipulation
 - `pdfminer.six` - PDF text extraction
 - `chardet` - Character encoding detection
 - `urllib3` - HTTP client
 
+**Windows-only:**
+- `pywin32` - required for Outlook Desktop email automation (installed automatically on Windows)
+
 **Verify Installation:**
 ```bash
-python3 -c "import scrapy, requests, openpyxl; print('All packages installed successfully!')"
+python -c "import scrapy, requests, openpyxl; print('All packages installed successfully!')"
 ```
 
 ### Step 3: Make Scripts Executable
+
+This step is **macOS/Linux only**. Windows users can skip this.
+
 ```bash
 chmod +x scripts/run_workflow.sh
 chmod +x scripts/fresh_start.sh
@@ -182,9 +211,11 @@ CSULA-d-adminfin-content-manager,Jane Smith,234567,jane.smith@calstatela.edu
 
 **For a fresh start (cleans everything):**
 ```bash
-cd /Users/pavan/Work/CSULA-homegrownPAC
+cd /path/to/CSULA-homegrownPAC
 ./scripts/fresh_start.sh && ./scripts/run_workflow.sh
 ```
+
+**Windows:** use the step-by-step commands in `setup/WINDOWS_INSTALLATION_GUIDE.md` (the `.sh` scripts are not used on Windows).
 
 This will:
 1. Clean all previous data (database, output files, temp files)

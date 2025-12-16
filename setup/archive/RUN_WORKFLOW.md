@@ -263,29 +263,10 @@ open output/emails/email_pchauha5_calstatela.edu.html
 
 ## PHASE 6: Send Emails (Optional)
 
-**⚠️ WARNING:** Email sending currently uses Outlook COM automation (Windows only). 
-For macOS, you'll need to configure SMTP in `config.py` first.
+**Email sending is Windows-only** in this project.
 
-### Configure SMTP for macOS
-
-Edit `config.py`:
-```python
-EMAIL_METHOD = "smtp"
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USERNAME = "pchauha5@calstatela.edu"
-SMTP_PASSWORD = "your-app-specific-password"  # Generate this in Gmail settings
-```
-
-### Send Test Email
-
-```bash
-# Currently, email sending is done via admin_email.py or pdf_email.py
-# These need to be updated to use the new config system
-
-# For now, you can manually send the HTML files via your email client
-echo "Email sending needs SMTP configuration - see CONFIG_SETUP.md"
-```
+- On Windows: run `python3 scripts/send_emails.py` (requires Outlook Desktop + pywin32).
+- On macOS: use the saved HTML files under `output/emails/` and send manually.
 
 ---
 
@@ -497,7 +478,7 @@ For 3 test domains with ~50 PDFs each:
 
 ⚠️ **Current Limitations:**
 - Some modules still have hardcoded paths (need updating)
-- Email sending requires SMTP configuration for macOS
+- Email sending requires Windows + Outlook Desktop (Outlook automation)
 - Box.com integration may need authentication
 - Large domain scans can take hours
 
@@ -511,6 +492,6 @@ For 3 test domains with ~50 PDFs each:
 
 🔧 **Needs Manual Configuration:**
 - Update import statements in modules to use config
-- Configure SMTP for email sending
+- Configure Outlook Desktop (Windows) for email sending
 - Adjust crawling speed if needed
 - Set up Box.com credentials if using Box storage

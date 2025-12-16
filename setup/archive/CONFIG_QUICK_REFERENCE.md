@@ -62,12 +62,8 @@ ACCESSIBILITY_EMAIL = "access@yourcollege.edu"
 
 In `config.py`:
 ```python
-# For Gmail SMTP
-EMAIL_METHOD = "smtp"
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USERNAME = "your.email@gmail.com"
-SMTP_PASSWORD = "your-app-password"  # Not your regular password!
+# Email sending is Windows-only via Outlook automation.
+# Configure the Outlook options (e.g., OUTLOOK_SAVE_AS_MSG / OUTLOOK_DISPLAY_ONLY).
 ```
 
 ### 7. Adjust Crawling Speed
@@ -267,14 +263,7 @@ AUTOTHROTTLE_MAX_DELAY = 120
    - API keys
    - Employee personal information
 
-2. **Use environment variables for secrets:**
-   ```bash
-   export SMTP_PASSWORD="secret"
-   ```
-   ```python
-   import os
-   SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-   ```
+2. **Use environment variables for secrets** (if you add any in the future).
 
 3. **Restrict database permissions:**
    ```bash

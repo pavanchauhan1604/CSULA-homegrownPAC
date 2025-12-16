@@ -15,6 +15,13 @@ This index helps you find the right documentation for your needs.
 - Installing Python packages
 - Troubleshooting installation issues
 
+**On Windows (recommended):**
+→ Read: **[WINDOWS_INSTALLATION_GUIDE.md](WINDOWS_INSTALLATION_GUIDE.md)**
+- PowerShell + virtualenv setup
+- `requirements.txt` install
+- VeraPDF install on Windows
+- Outlook Desktop email sending setup
+
 ---
 
 ### I want to... **set up and run the checker**
@@ -50,6 +57,7 @@ This index helps you find the right documentation for your needs.
 | File | Purpose | When to Use |
 |------|---------|-------------|
 | **INSTALLATION_GUIDE.md** | Software installation | First time setup, new machine |
+| **WINDOWS_INSTALLATION_GUIDE.md** | Windows install + run | Running the system on Windows |
 | **COMPLETE_SETUP_GUIDE.md** | Full setup & usage guide | Complete reference |
 | **QUICK_REFERENCE.md** | Commands & troubleshooting | Quick lookup |
 | **REORGANIZATION_SUMMARY.md** | Project structure changes | Understanding new layout |

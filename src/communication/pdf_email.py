@@ -1,3 +1,14 @@
+"""DEPRECATED legacy file.
+
+This module contains an older Windows-only Outlook COM example kept for reference.
+
+Use scripts/send_emails.py for the supported Outlook automation workflow.
+"""
+
+# Original Windows-only implementation below
+# DO NOT USE - Not compatible with macOS or Linux
+
+"""
 import win32com.client as win32
 import pythoncom
 import time
@@ -38,17 +49,16 @@ def generate_email(html_content, reciever):
     print("Email properties set.")
 
     # Save the email as an MSG file
-    save_path = r"C:\Users\913678186\IdeaProjects\sf_state_pdf_website_scan\emails\email.msg"  # Ensure the path includes the filename and extension
+    save_path = r"C:\Users\913678186\IdeaProjects\sf_state_pdf_website_scan\emails\email.msg"
     # mail.SaveAs(save_path, 3)  # 3: olMSG
     print("Sending")
     mail_item.Send()
     # print(f"Email saved as: {save_path}")
     print("Complete")
 
-
-
     pythoncom.CoUninitialize()
 
 
 for email in emails:
     generate_email(email[0], email[1])
+"""

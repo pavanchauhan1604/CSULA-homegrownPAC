@@ -349,8 +349,26 @@ def get_all_sites_domain_names():
 
 
 def get_site_id_by_domain_name(domain_name):
-
-    domain_name = domain_name.replace("-",".")
+    """
+    Get site ID from database by domain name.
+    Handles conversion from folder names (with dashes) to database domain names.
+    
+    Examples:
+        Folder: calstatela-edu_publicsafety_campus-safety-report
+        Database: calstatela.edu_publicsafety_campus-safety-report
+        
+        Only converts dashes to dots in the domain part (before first underscore)
+    """
+    # Split on first underscore to separate domain from path
+    if '_' in domain_name:
+        parts = domain_name.split('_', 1)
+        # Convert dashes to dots only in the domain part
+        domain_part = parts[0].replace('-', '.')
+        # Reconstruct with original path part
+        domain_name = f"{domain_part}_{parts[1]}"
+    else:
+        # No underscore, just convert all dashes (simple domain)
+        domain_name = domain_name.replace('-', '.')
 
     conn = sqlite3.connect('drupal_pdfs.db')
     cursor = conn.cursor()

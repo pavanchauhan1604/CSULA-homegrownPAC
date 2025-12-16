@@ -115,6 +115,7 @@ VERAPDF_COMMAND = "verapdf"
 # VeraPDF validation profile (ua1, ua2, etc.)
 VERAPDF_PROFILE = "ua1"
 
+
 # VeraPDF output format
 VERAPDF_FORMAT = "json"
 
@@ -140,18 +141,50 @@ ROBOTSTXT_OBEY = False  # Set to True if you want to respect robots.txt
 # EMAIL SETTINGS
 # =============================================================================
 
+# Email sender name and address
+EMAIL_SENDER_NAME = "Cal State LA Accessibility Team"
+# EMAIL_SENDER_EMAIL = "accessibility@calstatela.edu"
+EMAIL_SENDER_EMAIL = "pchauha5@calstatela.edu"
+
+# Default email subject line
+EMAIL_SUBJECT = "PDF Accessibility Report - Cal State LA"
+
 # Email template path
 EMAIL_TEMPLATE_PATH = OUTPUT_DIR / "email_templates" / "email_template.html"
 
-# Email sending method ("outlook_com", "smtp", or "none")
-EMAIL_METHOD = "none"  # Options: "outlook_com", "smtp", "none"
 
-# SMTP settings (if EMAIL_METHOD is "smtp")
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USE_TLS = True
-SMTP_USERNAME = ""  # Your email username
-SMTP_PASSWORD = ""  # Your email password or app-specific password
+# Test Mode (dry run - doesn't actually send/save emails)
+EMAIL_DRY_RUN = False
+
+# =============================================================================
+# OUTLOOK (WINDOWS) CONFIGURATION (for Outlook COM automation)
+# =============================================================================
+
+# If set, emails will be created "on behalf of" this address.
+# This requires Exchange permissions. Leave as None to send as the signed-in mailbox.
+OUTLOOK_SENT_ON_BEHALF_OF = None
+
+# Choose whether Outlook automation sends emails or saves draft .msg files.
+# - False: send immediately via Outlook
+# - True: save .msg files to OUTPUT_EMAILS_DIR/outlook_msg/
+OUTLOOK_SAVE_AS_MSG = False
+OUTLOOK_MSG_DIR = OUTPUT_EMAILS_DIR / "outlook_msg"
+OUTLOOK_MSG_DIR.mkdir(exist_ok=True)
+
+# If True, opens the draft window in Outlook instead of sending.
+OUTLOOK_DISPLAY_ONLY = False
+
+# =============================================================================
+# EMAIL SENDING OPTIONS
+# =============================================================================
+
+# Enable/Disable automatic email sending
+ENABLE_EMAIL_SENDING = True            # Set to False to disable email sending
+
+# Save email copies to file (for records)
+SAVE_EMAIL_COPIES = True               # Save sent emails as .eml files for records
+EMAIL_COPIES_DIR = OUTPUT_EMAILS_DIR / "sent"
+EMAIL_COPIES_DIR.mkdir(exist_ok=True)
 
 # =============================================================================
 # REPORTING SETTINGS
@@ -169,9 +202,25 @@ EXCEL_REPORT_NAME_FORMAT = "{site_name}-pdf-scans.xlsx"
 
 # Test domains (for initial testing with a subset of domains)
 # Note: Use underscore (_) instead of slash (/) for URL paths
+# TEST_DOMAINS = [
+#     "www.calstatela.edu_accessibility",
+#     "www.calstatela.edu_publicsafety_campus-safety-report",
+#     "www.calstatela.edu_student-life_campus-services",
+#     "www.calstatela.edu_academic-affairs",
+#     "www.calstatela.edu_admissions",
+#     "www.calstatela.edu_financial-aid",
+#     "www.calstatela.edu_library",
+#     "www.calstatela.edu_research",
+#     "www.calstatela.edu_student-affairs",
+#     "www.calstatela.edu_faculty-staff",
+#     "www.calstatela.edu_alumni",
+#     "www.calstatela.edu_events",
+#     "www.calstatela.edu_news",
+# ]
 TEST_DOMAINS = [
     "www.calstatela.edu_accessibility",
 ]
+
 
 # Use test domains only (set to False for production)
 USE_TEST_DOMAINS_ONLY = True
