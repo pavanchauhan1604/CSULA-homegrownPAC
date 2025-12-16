@@ -110,7 +110,7 @@ SCANS_OUTPUT_FORMAT = str(PDF_SITES_FOLDER / "{}")
 # =============================================================================
 
 # VeraPDF command (should be in PATH, or provide full path here)
-VERAPDF_COMMAND = "verapdf"
+VERAPDF_COMMAND = r"C:\Users\pchauha4\veraPDF\verapdf.bat"
 
 # VeraPDF validation profile (ua1, ua2, etc.)
 VERAPDF_PROFILE = "ua1"

@@ -66,7 +66,11 @@ def violation_counter(json_file):
 
     # Now, open the file with the detected encoding
     with open(json_file, 'r', encoding=encoding) as validation_file:
-        validation = json.load(validation_file)
+        try:
+            validation = json.load(validation_file)
+        except json.JSONDecodeError:
+            print(f"Warning: Could not decode JSON from {json_file}. File might be empty.")
+            return violations
 
         # Handle case where validation might be a list or have different structure
         try:
@@ -243,11 +247,11 @@ def check_for_alt_tags(document):
                 if "/XObject" in resources.keys():
                     XObject = resources.get("/XObject")
                     for key in XObject.keys():
-                        if re.match(re.compile("/Fm\d|/P\d"), key):  # form XObject?
+                        if re.match(re.compile(r"/Fm\d|/P\d"), key):  # form XObject?
                             fxobject_resources = XObject[key].get("/Resources")
                             if "/XObject" in fxobject_resources.keys():
                                 for xobject_key in fxobject_resources["/XObject"]:
-                                    if re.match(re.compile("/Im\d"), xobject_key):  # image XObject?
+                                    if re.match(re.compile(r"/Im\d"), xobject_key):  # image XObject?
                                         check_xObject_image(fxobject_resources["/XObject"][xobject_key])
                         else:
                             check_xObject_image(XObject[key])

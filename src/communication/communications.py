@@ -1,7 +1,10 @@
 import sqlite3
+import os
 from collections import namedtuple
+from pathlib import Path
 
 from src.core.filters import is_high_priority, get_priority_level
+import config
 
 
 def generate_pdf_details_by_employee(employee_id):
@@ -142,6 +145,22 @@ def build_emails():
 
             pdf_details = generate_pdf_details_by_employee(employee[3])
             html_summary = create_html_email_summary(pdf_details)
+            
+            # Collect attachments (Excel reports)
+            attachments = []
+            for domain in pdf_details.keys():
+                # Construct the expected Excel report path
+                # Using the helper from config.py would be best, but we can reconstruct it here
+                # config.get_excel_report_path(domain)
+                
+                try:
+                    excel_path = config.get_excel_report_path(domain)
+                    if excel_path.exists():
+                        attachments.append(str(excel_path))
+                    else:
+                        print(f"Warning: Excel report not found for {domain} at {excel_path}")
+                except Exception as e:
+                    print(f"Error getting Excel path for {domain}: {e}")
 
             template_values = {
                 "employee_first_name": employee[0],
@@ -149,7 +168,7 @@ def build_emails():
                 "pdf_data_table": html_summary
             }
             email_text = template_email(template_values)
-            emails.append( (email_text, employee[2]) )
+            emails.append( (email_text, employee[2], attachments) )
     return emails
 
 

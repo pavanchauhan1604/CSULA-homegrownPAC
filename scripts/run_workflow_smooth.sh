@@ -1,17 +1,15 @@
 #!/bin/bash
-# Complete PDF Accessibility Workflow for CSULA
-# Run this script to execute the entire workflow step by step
+# Complete PDF Accessibility Workflow for CSULA (Smooth/Non-Interactive Version)
+# Run this script to execute the entire workflow without pauses
 
 set -e  # Exit on error
 
 echo "============================================================"
-echo "🚀 CSULA PDF Accessibility Checker - Complete Workflow"
+echo "🚀 CSULA PDF Accessibility Checker - Complete Workflow (Smooth)"
 echo "============================================================"
 echo ""
 
 # Change to project directory
-# cd /Users/pavan/Work/CSULA-homegrownPAC
-# Use current directory instead
 cd "$(dirname "$0")/.."
 
 echo "📍 Current directory: $(pwd)"
@@ -31,11 +29,11 @@ echo "Using Python: $PYTHON_CMD"
 echo "============================================================"
 echo "STEP 0: Setup Database and Load Test Data"
 echo "============================================================"
-echo "Command: $PYTHON_CMD scripts/setup_test_environment.py"
+echo "Command: $PYTHON_CMD scripts/setup_test_environment.py --force"
 echo ""
-"$PYTHON_CMD" scripts/setup_test_environment.py
+"$PYTHON_CMD" scripts/setup_test_environment.py --force
 echo ""
-read -p "✓ Step 0 complete. Press Enter to continue to Step 1..."
+echo "✓ Step 0 complete."
 echo ""
 
 # Step 1: Generate Spiders
@@ -46,7 +44,7 @@ echo "Command: $PYTHON_CMD config/generate_spiders.py"
 echo ""
 "$PYTHON_CMD" config/generate_spiders.py
 echo ""
-read -p "✓ Step 1 complete. Press Enter to continue to Step 2..."
+echo "✓ Step 1 complete."
 echo ""
 
 # Step 2: Run Spiders
@@ -61,7 +59,7 @@ cd crawlers/sf_state_pdf_scan
 ../../"$PYTHON_CMD" run_all_spiders.py
 cd ../..
 echo ""
-read -p "✓ Step 2 complete. Press Enter to continue to Step 3..."
+echo "✓ Step 2 complete."
 echo ""
 
 # Step 3: Check what was found
@@ -72,7 +70,7 @@ echo "Command: find output/scans -name 'scanned_pdfs.txt' -exec wc -l {} +"
 echo ""
 find output/scans -name 'scanned_pdfs.txt' -exec wc -l {} +
 echo ""
-read -p "✓ Step 3 complete. Press Enter to continue to Step 4..."
+echo "✓ Step 3 complete."
 echo ""
 
 # Step 4: Analyze PDFs
@@ -97,7 +95,7 @@ create_all_pdf_reports()
 print('PDF analysis complete!')
 "
 echo ""
-read -p "✓ Step 4 complete. Press Enter to continue to Step 5..."
+echo "✓ Step 4 complete."
 echo ""
 
 # Step 5: Generate Excel Reports
@@ -120,7 +118,7 @@ build_all_xcel_reports()
 print('Excel reports complete!')
 "
 echo ""
-read -p "✓ Step 5 complete. Press Enter to continue to Step 6..."
+echo "✓ Step 5 complete."
 echo ""
 
 # Step 6: Generate Email Reports
@@ -150,7 +148,7 @@ for email_html, recipient, attachments in emails:
 print('Email reports complete!')
 "
 echo ""
-read -p "✓ Step 6 complete. Press Enter to see final results..."
+echo "✓ Step 6 complete."
 echo ""
 
 # Step 7: Display Results
@@ -207,17 +205,4 @@ echo ""
 echo "============================================================"
 echo "✅ Workflow Complete!"
 echo "============================================================"
-echo ""
-echo " Final Summary"
-echo "============================================================"
-echo ""
-echo "✅ Reports generated:"
-echo "  • Excel Reports: output/scans/*/*.xlsx"
-echo "  • Email Reports: output/emails/*.html"
-echo ""
-echo "💡 Next steps:"
-echo "  • Open Excel: open output/scans/*/*.xlsx"
-echo "  • Preview email: open output/emails/*.html"
-echo "  • Verify results, then send emails: $PYTHON_CMD scripts/send_emails.py"
-echo "  • Query database: sqlite3 drupal_pdfs.db"
 echo ""

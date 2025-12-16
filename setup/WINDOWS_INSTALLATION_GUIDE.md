@@ -107,20 +107,25 @@ python -c "import win32com.client, pythoncom; print('pywin32 OK')"
 
 1. Download VeraPDF for Windows: https://software.verapdf.org/
 2. Run `verapdf-installer.exe`
-3. Ensure VeraPDF is on PATH. If not, add it:
-   - Control Panel → System → Advanced system settings → Environment Variables
-   - Edit the **Path** variable
-   - Add the VeraPDF install directory (commonly `C:\Program Files\veraPDF\`)
+3. **Important**: Ensure VeraPDF is on your system PATH.
+   - If you didn't add it to PATH during installation, you can configure it in `config.py`.
+   - Open `config.py` and find `VERAPDF_COMMAND`.
+   - Update it to point to your installation, e.g.:
+     ```python
+     VERAPDF_COMMAND = r"C:\Program Files\veraPDF\verapdf.bat"
+     # OR if you installed it in your user folder:
+     # VERAPDF_COMMAND = r"C:\Users\<your_user>\veraPDF\verapdf.bat"
+     ```
 
 Verify:
 
 ```powershell
+# If in PATH:
 verapdf --version
+
+# If configured in config.py, run the setup test:
+python test_setup.py
 ```
-
-If `verapdf` is not found, you can also set a full path in `config.py`:
-
-- `VERAPDF_COMMAND = "C:\\Program Files\\veraPDF\\verapdf.bat"` (example)
 
 ---
 
@@ -154,21 +159,31 @@ This checks core prerequisites (including VeraPDF availability).
 
 ## 9) Run the full workflow (Windows)
 
-> Note: the `.sh` workflow scripts are for macOS/Linux. On Windows, run the Python steps below.
+You have two options to run the workflow:
 
-### Step 0 — Setup database + test data
+### Option A: Using Git Bash (Recommended)
+If you have Git Bash installed (comes with Git for Windows), you can run the automated shell script:
+
+```bash
+bash scripts/run_workflow.sh
+```
+
+### Option B: Manual Python Steps (PowerShell)
+If you don't have Git Bash, run these commands sequentially in PowerShell:
+
+#### Step 0 — Setup database + test data
 
 ```powershell
 python scripts\setup_test_environment.py
 ```
 
-### Step 1 — Generate spiders
+#### Step 1 — Generate spiders
 
 ```powershell
 python config\generate_spiders.py
 ```
 
-### Step 2 — Crawl sites to discover PDFs
+#### Step 2 — Crawl sites to discover PDFs
 
 ```powershell
 cd crawlers\sf_state_pdf_scan
@@ -176,19 +191,19 @@ python run_all_spiders.py
 cd ..\..\
 ```
 
-### Step 3 — Analyze PDFs with VeraPDF (build DB reports)
+#### Step 3 — Analyze PDFs with VeraPDF (build DB reports)
 
 ```powershell
 python master_functions.py
 ```
 
-### Step 4 — Generate Excel reports
+#### Step 4 — Generate Excel reports
 
 ```powershell
 python -c "from master_functions import build_all_xcel_reports; build_all_xcel_reports()"
 ```
 
-### Step 5 — Generate email HTML previews
+#### Step 5 — Generate email HTML previews
 
 ```powershell
 python scripts\generate_emails.py

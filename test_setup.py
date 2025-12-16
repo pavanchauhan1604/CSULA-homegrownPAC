@@ -81,7 +81,17 @@ def test_verapdf():
     
     try:
         import subprocess
-        result = subprocess.run(['verapdf', '--version'], 
+        import config
+        
+        # Use configured command or default to 'verapdf'
+        cmd = config.VERAPDF_COMMAND if hasattr(config, 'VERAPDF_COMMAND') else 'verapdf'
+        
+        # If command is a path with spaces, it might need handling, but subprocess.run handles list args well.
+        # If config.VERAPDF_COMMAND is a string path, we should use it.
+        
+        print(f"  Testing command: {cmd}")
+        
+        result = subprocess.run([cmd, '--version'], 
                               capture_output=True, 
                               text=True, 
                               timeout=5)

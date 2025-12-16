@@ -30,8 +30,8 @@ def get_box_contents(box_url):
         page_html = BeautifulSoup(page_request.content, features="lxml")
 
         page_scripts = page_html.find_all("script")
-        expression = re.compile("Box\.postStreamData")
-        items_expression = re.compile('"items":\[\{.*.}]')
+        expression = re.compile(r"Box\.postStreamData")
+        items_expression = re.compile(r'"items":\[\{.*.}]')
         print(page_scripts)
         for script in page_scripts:
             if expression.search(script.text):

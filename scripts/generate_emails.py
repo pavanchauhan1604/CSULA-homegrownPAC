@@ -34,7 +34,7 @@ def main():
     print(f"\n✅ Generated {len(emails)} email(s)")
     print("-" * 80)
     
-    for idx, (html_content, recipient_email) in enumerate(emails, 1):
+    for idx, (html_content, recipient_email, attachments) in enumerate(emails, 1):
         # Create safe filename
         safe_filename = f"email_{sanitize_email_for_filename(recipient_email)}.html"
         output_path = output_dir / safe_filename
@@ -45,6 +45,10 @@ def main():
         
         print(f"{idx}. {recipient_email}")
         print(f"   📄 Saved to: {output_path}")
+        if attachments:
+            print(f"   📎 Attachments: {len(attachments)}")
+            for att in attachments:
+                print(f"      - {Path(att).name}")
         print()
     
     print("=" * 80)

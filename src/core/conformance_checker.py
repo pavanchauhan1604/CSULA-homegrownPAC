@@ -50,7 +50,11 @@ def download_pdf_into_memory(url, loc, domain_id):
 def create_verapdf_report(url):
 
     try:
-        verapdf_command = f'verapdf -f ua1 --format json "{temp_pdf_path}" > "{temp_profile_path}"'
+        # Use configured VeraPDF command
+        verapdf_cmd = config.VERAPDF_COMMAND if hasattr(config, 'VERAPDF_COMMAND') else 'verapdf'
+        
+        # Construct command with proper quoting
+        verapdf_command = f'"{verapdf_cmd}" -f ua1 --format json "{temp_pdf_path}" > "{temp_profile_path}"'
 
         # Execute the command and capture the output
         try:

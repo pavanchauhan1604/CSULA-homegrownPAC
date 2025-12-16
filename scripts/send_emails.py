@@ -10,6 +10,7 @@ Important:
 """
 
 import sys
+import argparse
 from datetime import datetime
 from pathlib import Path
 
@@ -60,6 +61,10 @@ def print_results_summary(results: dict):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Send PDF accessibility reports via Outlook.")
+    parser.add_argument("--force", action="store_true", help="Skip confirmation prompt and send immediately.")
+    args = parser.parse_args()
+
     print("=" * 80)
     print("📧 PDF Accessibility Email Sender (Outlook - Windows)")
     print("=" * 80)
@@ -102,15 +107,21 @@ def main():
         print("\n" + "=" * 80)
         print("⚠️  IMPORTANT: You are about to send emails to the following recipients:")
         print("=" * 80)
-        for _, recipient_email in emails:
+        for _, recipient_email, attachments in emails:
             print(f"   • {recipient_email}")
+            if attachments:
+                print(f"     📎 {len(attachments)} attachment(s)")
         
         print("\n" + "=" * 80)
-        response = input("Do you want to proceed with sending? (yes/no): ").strip().lower()
         
-        if response not in ['yes', 'y']:
-            print("\n❌ Email sending cancelled by user")
-            return
+        if args.force:
+            print("⏩ Force mode enabled: Skipping confirmation prompt.")
+        else:
+            response = input("Do you want to proceed with sending? (yes/no): ").strip().lower()
+            
+            if response not in ['yes', 'y']:
+                print("\n❌ Email sending cancelled by user")
+                return
     
     outlook_options = OutlookSendOptions(
         subject=config.EMAIL_SUBJECT,
@@ -136,7 +147,7 @@ def main():
 
     if getattr(config, "SAVE_EMAIL_COPIES", False):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        for idx, (html_content, recipient_email) in enumerate(emails, 1):
+        for idx, (html_content, recipient_email, attachments) in enumerate(emails, 1):
             base_filename = f"{timestamp}_{idx}_{_safe_email_filename(recipient_email)}"
             html_filepath = config.EMAIL_COPIES_DIR / f"{base_filename}.html"
             with open(html_filepath, "w", encoding="utf-8") as f:
@@ -144,6 +155,8 @@ def main():
 
             print(f"   ✅ Email #{idx} ({recipient_email}):")
             print(f"      🌐 {base_filename}.html")
+            if attachments:
+                print(f"      📎 Attachments: {len(attachments)}")
 
         print(f"\n📁 All files saved in: {config.EMAIL_COPIES_DIR.absolute()}/")
         print("\n📋 How to use:")

@@ -66,6 +66,7 @@ def send_email_outlook(
     recipient_email: str,
     html_content: str,
     options: OutlookSendOptions,
+    attachments: Optional[List[str]] = None,
 ) -> Tuple[bool, str, Optional[Path]]:
     """Send (or save) a single email using Outlook.
 
@@ -93,6 +94,15 @@ def send_email_outlook(
         if options.sent_on_behalf_of:
             # Requires Exchange permission: "Send on behalf" or "Send As"
             mail_item.SentOnBehalfOfName = options.sent_on_behalf_of
+            
+        # Add attachments
+        if attachments:
+            for attachment_path in attachments:
+                if attachment_path:
+                    try:
+                        mail_item.Attachments.Add(str(attachment_path))
+                    except Exception as e:
+                        print(f"Warning: Failed to attach {attachment_path}: {e}")
 
         saved_path: Optional[Path] = None
         if options.save_as_msg:
@@ -126,13 +136,13 @@ def send_email_outlook(
 
 
 def send_emails_batch_outlook(
-    emails: Iterable[Tuple[str, str]],
+    emails: Iterable[Tuple[str, str, List[str]]],
     options: OutlookSendOptions,
     dry_run: bool = False,
 ) -> dict:
     """Send multiple emails via Outlook with a results summary."""
 
-    emails_list: List[Tuple[str, str]] = list(emails)
+    emails_list: List[Tuple[str, str, List[str]]] = list(emails)
 
     results = {
         "sent": [],
@@ -149,8 +159,12 @@ def send_emails_batch_outlook(
     print(f"\n📧 Outlook sending {len(emails_list)} email(s)...")
     print("=" * 80)
 
-    for idx, (html_content, recipient_email) in enumerate(emails_list, 1):
+    for idx, (html_content, recipient_email, attachments) in enumerate(emails_list, 1):
         print(f"\n[{idx}/{len(emails_list)}] To: {recipient_email}")
+        if attachments:
+            print(f"   📎 Attachments: {len(attachments)} file(s)")
+            for att in attachments:
+                print(f"      - {Path(att).name}")
 
         if dry_run:
             print("   🧪 DRY RUN - Would create Outlook email")
@@ -161,6 +175,7 @@ def send_emails_batch_outlook(
             recipient_email=recipient_email,
             html_content=html_content,
             options=options,
+            attachments=attachments,
         )
 
         print(f"   {message}")

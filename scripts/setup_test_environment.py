@@ -14,6 +14,7 @@ Usage:
 import csv
 import sqlite3
 import sys
+import argparse
 from pathlib import Path
 
 # Add parent directory to path to import config
@@ -33,7 +34,7 @@ def create_database_tables():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS drupal_site (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            domain_name TEXT NOT NULL,
+            domain_name TEXT NOT NULL UNIQUE,
             page_title TEXT,
             security_group_name TEXT,
             box_folder TEXT
@@ -378,6 +379,10 @@ def display_database_summary():
 
 def main():
     """Main setup function."""
+    parser = argparse.ArgumentParser(description="Setup Test Environment for CSULA PDF Checker")
+    parser.add_argument("--force", action="store_true", help="Skip confirmation prompt")
+    args = parser.parse_args()
+
     print("=" * 70)
     print("CSULA PDF Accessibility Checker - Test Environment Setup")
     print("=" * 70)
@@ -391,10 +396,13 @@ def main():
     print(f"  - CSV files in: {config.DATA_DIR}")
     print()
     
-    response = input("Continue? (yes/no): ").strip().lower()
-    if response not in ['yes', 'y']:
-        print("Setup cancelled.")
-        return
+    if args.force:
+        print("⏩ Force mode enabled: Skipping confirmation prompt.")
+    else:
+        response = input("Continue? (yes/no): ").strip().lower()
+        if response not in ['yes', 'y']:
+            print("Setup cancelled.")
+            return
     
     try:
         # Step 1: Create database tables
