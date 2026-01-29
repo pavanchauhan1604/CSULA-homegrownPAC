@@ -17,7 +17,7 @@ spider_template = """# Generated spider
 import scrapy
 from datetime import datetime
 import os
-import re
+from urllib.parse import urlparse
 
 def get_box_contents(url):
     \"\"\"
@@ -28,8 +28,9 @@ def get_box_contents(url):
 
 class {class_name}(scrapy.Spider):
     name = "{name}"
-    allowed_domains = ["{domain_only}"]
-    start_urls = ["https://{site_url}"]
+    allowed_domains = ["{allowed_domain}"]
+    start_urls = {start_urls}
+    scope_path = "{scope_path}"
     custom_settings = {{
         'DEPTH_LIMIT': 3,
         'CONCURRENT_REQUESTS': 16,
@@ -50,9 +51,31 @@ class {class_name}(scrapy.Spider):
         \"\"\"
         Main parser that extracts PDF links and follows internal links.
         \"\"\"
+        def is_http_url(url: str) -> bool:
+            try:
+                parsed = urlparse(url)
+            except Exception:
+                return False
+            return parsed.scheme in ("http", "https", "")
+
+        def is_internal(url: str) -> bool:
+            parsed = urlparse(url)
+            if not parsed.netloc:
+                return True
+            return parsed.netloc.lower().endswith(self.allowed_domains[0].lower())
+
+        def is_in_scope(url: str) -> bool:
+            if not getattr(self, "scope_path", ""):
+                return True
+            parsed = urlparse(url)
+            return parsed.path.startswith(self.scope_path)
+
         # Extract all links
         for link in response.css('a::attr(href)').getall():
             absolute_url = response.urljoin(link)
+
+            if not is_http_url(absolute_url):
+                continue
             
             # Check if it's a PDF
             if absolute_url.lower().endswith('.pdf'):
@@ -69,9 +92,9 @@ class {class_name}(scrapy.Spider):
                     meta={{'history': [response.url]}}
                 )
             
-            # Follow internal links
-            elif response.url in absolute_url or absolute_url.startswith('/'):
-                yield response.follow(link, callback=self.parse)
+            # Follow internal links (optionally scoped)
+            elif is_internal(absolute_url) and is_in_scope(absolute_url):
+                yield response.follow(absolute_url, callback=self.parse)
 
     def parse_box(self, response):
         \"\"\"
@@ -146,16 +169,36 @@ def generate_spiders():
             # Folder name for output (keep underscores)
             save_folder = site.replace('.', '-').lower()
             
-            # Extract domain only (without path) for allowed_domains
+            # Extract domain only (without path)
             domain_only = site_url.split('/')[0] if '/' in site_url else site_url
+            allowed_domain = domain_only[4:] if domain_only.lower().startswith('www.') else domain_only
+
+            # If the site includes a path (e.g. example.edu/accessibility), scope crawling to that path
+            scope_path = ""
+            if '/' in site_url:
+                scope_path = '/' + '/'.join(site_url.split('/')[1:])
+
+            # Default start URL
+            start_urls = [f"https://{site_url}"]
+
+            # Special-case seeding for CSULA accessibility to match PopeTech coverage
+            if allowed_domain.lower().endswith('calstatela.edu') and scope_path == '/accessibility':
+                host = domain_only
+                start_urls.extend([
+                    f"https://{host}/accessibility/web-accessibility-guidelines-old-content-archive",
+                    f"https://{host}/accessibility/guide-archiving-drupal-content",
+                    f"https://{host}/accessibility/ada-title-ii-update",
+                    f"https://{host}/accessibility/editoria11y-demo",
+                ])
             
             class_name = f"{site_name_cleaned_for_class}Spider"
             
             spider_code = spider_template.format(
                 class_name=class_name,
                 name=f"{site_name_cleaned_for_name}_spider",
-                site_url=site_url,
-                domain_only=domain_only,
+                allowed_domain=allowed_domain,
+                start_urls=repr(start_urls),
+                scope_path=scope_path,
                 save_folder=save_folder
             )
             

@@ -444,15 +444,24 @@ def check_bookmarks(document):
 
 def pdf_check(location):
 
+    # Always compute a stable file hash first (even if the PDF is malformed).
+    file_hash = ""
     try:
-        Pikepdf = Pdf.open(location, allow_overwriting_input=True)
-        tagged = check_if_tagged(Pikepdf)
-        # get file hash
         with open(location, 'rb') as afile:
             buf = afile.read()
             hasher = hashlib.sha256()
             hasher.update(buf)
             file_hash = hasher.hexdigest()
+    except Exception as e:
+        # If we can't even read the file, return a structured error.
+        return {
+            "file_hash": file_hash,
+            "pdf_check_error": f"PDF READ ERROR: {e}",
+        }
+
+    try:
+        Pikepdf = Pdf.open(location, allow_overwriting_input=True)
+        tagged = check_if_tagged(Pikepdf)
 
         if tagged:
             alt_tag_count = check_for_alt_tags(Pikepdf)
@@ -461,7 +470,6 @@ def pdf_check(location):
         pdf_text_type = pdf_status(location)
 
         obj = {
-
             "tagged": bool(tagged),
             "has_form": check_for_forms(Pikepdf),
             # "alt_tag_count": alt_tag_count,
@@ -472,11 +480,13 @@ def pdf_check(location):
 
             # "headings_pass": verify_headings(Pikepdf),
             # "has_bookmarks": check_bookmarks(Pikepdf)
-
         }
     except PdfError as e:
         print("PDF READ ERROR", e)
-        return None
+        return {
+            "file_hash": file_hash,
+            "pdf_check_error": f"PDF READ ERROR: {e}",
+        }
 
     try:
         # Pikepdf.save()
@@ -484,7 +494,10 @@ def pdf_check(location):
         return obj
     except PdfError as e:
         print("PDF WRITE ERROR", e)
-        return None
+        return {
+            "file_hash": file_hash,
+            "pdf_check_error": f"PDF WRITE ERROR: {e}",
+        }
 
 
 

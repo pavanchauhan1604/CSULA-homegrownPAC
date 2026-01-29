@@ -34,7 +34,11 @@ def main():
     print(f"\n✅ Generated {len(emails)} email(s)")
     print("-" * 80)
     
-    for idx, (html_content, recipient_email, attachments) in enumerate(emails, 1):
+    for idx, item in enumerate(emails, 1):
+        html_content = item[0]
+        recipient_email = item[1]
+        attachments = item[2]
+        subject = item[3] if len(item) > 3 else None
         # Create safe filename
         safe_filename = f"email_{sanitize_email_for_filename(recipient_email)}.html"
         output_path = output_dir / safe_filename
@@ -44,6 +48,8 @@ def main():
             f.write(html_content)
         
         print(f"{idx}. {recipient_email}")
+        if subject:
+            print(f"   ✉️  Subject: {subject}")
         print(f"   📄 Saved to: {output_path}")
         if attachments:
             print(f"   📎 Attachments: {len(attachments)}")

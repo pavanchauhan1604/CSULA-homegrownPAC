@@ -1,0 +1,66 @@
+﻿XLSX: C:\Users\pchauha4\source\repos\CSULA-homegrownPAC\output\scans\calstatela-edu_accessibility\calstatela-pdf-scans.xlsx
+PopeTech CSV: C:\Users\pchauha4\Downloads\popetech-report-2026-01-25\pages\alerts_link_to_pdf_document.csv
+
+Sheets: Scanned PDFs, Failure, Sheet
+UsedRange: rows=106 cols=21
+Headers: pdf_uri | parent_uri | scanned_date | fingerprint | domain_name | security_group_name | drupal_site_id | violations | failed_checks | tagged | pdf_text_type | title_set | language_set | page_count | has_form | approved_pdf_exporter | parent_returns_404 | pdf_returns_404 | Errors/Page | Low Priority | DPRC Will Remediate
+
+--- Scan summary ---
+Rows with PDF values: 95
+Unique pdf_uri: 7
+Unique normalized PDF URLs: 7
+Unique (pdf_uri,parent_uri) pairs: 95
+
+Top duplicated PDFs (by pdf_uri):
+  45  https://www.calstatela.edu/sites/default/files/2026%20Campus%20Safety%20Plan.pdf
+  45  https://www.calstatela.edu/sites/default/files/2025%20Annual%20Security%20Report.pdf
+   1  https://www.calstatela.edu/sites/default/files/ati_memo_march_2021.pdf
+   1  Important Instructions:
+
+1) Please review PDF accessibility requirements at: https://www.calstatela.edu/accessibility
+2) Cal State LA will provide access to PDF remediation tools for all employees.
+3) Please update the Priority column if a PDF meets the requirements for low priority. Only focus on RED highlights.
+4) Pay Attention to the 'fingerprint' column. This is the unique identifier for each PDF. There may be duplicates on your domain.
+5) If you need assistance with PDF remediation, please contact:
+   Email: accessibility@calstatela.edu | Phone: 323-343-6170 (ITS Help Desk)
+6) These scans only look at files hosted on drupal or box, if you feel files are missing please let us know and we can run a new scan.
+7) For questions, training, or feedback, contact: accessibility@calstatela.edu
+   1  https://www.calstatela.edu/sites/default/files/ati_handout_021721.pdf
+   1  https://www.calstatela.edu/sites/default/files/Cal_State_LA_campus%20map-tactile_updated_0.pdf
+   1  https://www.calstatela.edu/sites/default/files/Renewed%20Campus%20Commitment%20ATI_103024.pdf
+
+Top duplicated fingerprints:
+  45  d35aba
+  45  69529a
+   1  9f5e7f
+   1  e92ee3
+   1  8a986e
+   1  c58a0e
+
+--- PopeTech summary ---
+Rows: 136
+Unique PDF URLs (normalized): 11
+
+--- Comparison (unique normalized PDF URLs) ---
+In PopeTech, not in scan: 5
+In scan, not in PopeTech: 1
+
+Examples missing from scan:
+  https://intopia.digital/wp-content/uploads/2019/10/2019-WCAG2.1-Map-Intopia-plus-reading-order.pdf
+  https://www.calstatela.edu/sites/default/files/2022 NASPA Annual Conference ML_archive.pdf
+  https://www.calstatela.edu/sites/default/files/Golden Eagle Awards Sp18_application_archive.pdf
+  https://www.calstatela.edu/sites/default/files/PBI Newsletter Feb. 2022 V06.pdf
+  https://www.calstatela.edu/sites/default/files/PBI Newsletter Feb. 2022 V06_archive.pdf
+
+Examples missing from PopeTech:
+  Important Instructions:
+
+1) Please review PDF accessibility requirements at: https://www.calstatela.edu/accessibility
+2) Cal State LA will provide access to PDF remediation tools for all employees.
+3) Please update the Priority column if a PDF meets the requirements for low priority. Only focus on RED highlights.
+4) Pay Attention to the 'fingerprint' column. This is the unique identifier for each PDF. There may be duplicates on your domain.
+5) If you need assistance with PDF remediation, please contact:
+   Email: accessibility@calstatela.edu | Phone: 323-343-6170 (ITS Help Desk)
+6) These scans only look at files hosted on drupal or box, if you feel files are missing please let us know and we can run a new scan.
+7) For questions, training, or feedback, contact: accessibility@calstatela.edu
+

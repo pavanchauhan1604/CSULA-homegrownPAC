@@ -2,7 +2,7 @@
 import scrapy
 from datetime import datetime
 import os
-import re
+from urllib.parse import urlparse
 
 def get_box_contents(url):
     """
@@ -11,10 +11,11 @@ def get_box_contents(url):
     return (False, url)  # Placeholder implementation
 
 
-class CalstatelaEduAccessibilitySpider(scrapy.Spider):
-    name = "calstatela_edu_accessibility_spider"
+class CalstatelaEduHhsSpider(scrapy.Spider):
+    name = "calstatela_edu_hhs_spider"
     allowed_domains = ["calstatela.edu"]
-    start_urls = ["https://calstatela.edu/accessibility"]
+    start_urls = ['https://calstatela.edu/hhs']
+    scope_path = "/hhs"
     custom_settings = {
         'DEPTH_LIMIT': 3,
         'CONCURRENT_REQUESTS': 16,
@@ -22,8 +23,8 @@ class CalstatelaEduAccessibilitySpider(scrapy.Spider):
     }
 
     def __init__(self, *args, **kwargs):
-        super(CalstatelaEduAccessibilitySpider, self).__init__(*args, **kwargs)
-        self.output_folder = "../../output/scans/calstatela-edu_accessibility"
+        super(CalstatelaEduHhsSpider, self).__init__(*args, **kwargs)
+        self.output_folder = "../../output/scans/calstatela-edu_hhs"
         self.pdf_links = []
         self.failed_box_links = []
         # Register spider_closed callback
@@ -35,9 +36,31 @@ class CalstatelaEduAccessibilitySpider(scrapy.Spider):
         """
         Main parser that extracts PDF links and follows internal links.
         """
+        def is_http_url(url: str) -> bool:
+            try:
+                parsed = urlparse(url)
+            except Exception:
+                return False
+            return parsed.scheme in ("http", "https", "")
+
+        def is_internal(url: str) -> bool:
+            parsed = urlparse(url)
+            if not parsed.netloc:
+                return True
+            return parsed.netloc.lower().endswith(self.allowed_domains[0].lower())
+
+        def is_in_scope(url: str) -> bool:
+            if not getattr(self, "scope_path", ""):
+                return True
+            parsed = urlparse(url)
+            return parsed.path.startswith(self.scope_path)
+
         # Extract all links
         for link in response.css('a::attr(href)').getall():
             absolute_url = response.urljoin(link)
+
+            if not is_http_url(absolute_url):
+                continue
             
             # Check if it's a PDF
             if absolute_url.lower().endswith('.pdf'):
@@ -54,9 +77,9 @@ class CalstatelaEduAccessibilitySpider(scrapy.Spider):
                     meta={'history': [response.url]}
                 )
             
-            # Follow internal links
-            elif response.url in absolute_url or absolute_url.startswith('/'):
-                yield response.follow(link, callback=self.parse)
+            # Follow internal links (optionally scoped)
+            elif is_internal(absolute_url) and is_in_scope(absolute_url):
+                yield response.follow(absolute_url, callback=self.parse)
 
     def parse_box(self, response):
         """

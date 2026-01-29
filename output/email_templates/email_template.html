@@ -4,57 +4,57 @@
     <meta charset="UTF-8">
     <title>PDF Accessibility Report</title>
     <style>
-        body {
+        body {{
             font-family: Arial, sans-serif;
             line-height: 1.6;
             color: #333;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-        }
-        h1 {
+        }}
+        h1 {{
             color: #003262;
             border-bottom: 3px solid #C4820E;
             padding-bottom: 10px;
-        }
-        .greeting {
+        }}
+        .greeting {{
             font-size: 16px;
             margin: 20px 0;
-        }
-        .content {
+        }}
+        .content {{
             margin: 20px 0;
-        }
-        table {
+        }}
+        table {{
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
-        }
-        th, td {
+        }}
+        th, td {{
             padding: 12px;
             text-align: left;
             border: 1px solid #ddd;
-        }
-        th {
+        }}
+        th {{
             background-color: #003262;
             color: white;
-        }
-        tr:nth-child(even) {
+        }}
+        tr:nth-child(even) {{
             background-color: #f2f2f2;
-        }
-        .footer {
+        }}
+        .footer {{
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
             font-size: 14px;
             color: #666;
-        }
+        }}
     </style>
 </head>
 <body>
     <h1>PDF Accessibility Report - Cal State LA</h1>
     
     <div class="greeting">
-        <p>Dear Pavan,</p>
+        <p>Dear {employee_first_name},</p>
     </div>
     
     <div class="content">
@@ -62,29 +62,7 @@
         
         <p>The following table shows PDFs that require accessibility remediation:</p>
         
-        
-        <div style="margin: 20px 0; padding: 20px; background-color: #f5f5f5; border-left: 4px solid #003262; border-radius: 5px;">
-            <h2 style="color: #003262; margin: 0 0 15px 0; font-size: 18px;">
-                calstatela.edu_hhs
-            </h2>
-            <div style="font-size: 16px; line-height: 1.8;">
-                <p style="margin: 5px 0;"><strong>Total PDFs Found:</strong> 700</p>
-                <p style="margin: 5px 0;"><strong>Unique PDFs:</strong> 130</p>
-                <p style="margin: 5px 0;">
-                    <span style="display: inline-block; width: 20px; height: 20px; background-color: #8B0000; margin-right: 8px; vertical-align: middle;"></span>
-                    <strong>High Priority:</strong> 68 PDFs
-                </p>
-                <p style="margin: 5px 0;">
-                    <span style="display: inline-block; width: 20px; height: 20px; background-color: #FF8C00; margin-right: 8px; vertical-align: middle;"></span>
-                    <strong>Medium Priority:</strong> 191 PDFs
-                </p>
-                <p style="margin: 5px 0;">
-                    <span style="display: inline-block; width: 20px; height: 20px; background-color: #006400; margin-right: 8px; vertical-align: middle;"></span>
-                    <strong>Low Priority:</strong> 441 PDFs
-                </p>
-            </div>
-        </div>
-        
+        {pdf_data_table}
         
         <p>Please review these files and take action to ensure they meet accessibility standards. If you have any questions or need assistance, please contact the Office of Equity, Diversity, and Inclusion.</p>
     </div>

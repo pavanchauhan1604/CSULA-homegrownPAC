@@ -52,23 +52,33 @@ def create_verapdf_report(url):
     try:
         # Use configured VeraPDF command
         verapdf_cmd = config.VERAPDF_COMMAND if hasattr(config, 'VERAPDF_COMMAND') else 'verapdf'
-        
+
         # Construct command with proper quoting
         verapdf_command = f'"{verapdf_cmd}" -f ua1 --format json "{temp_pdf_path}" > "{temp_profile_path}"'
 
-        # Execute the command and capture the output
-        try:
-            subprocess.run(verapdf_command, shell=True, text=True, capture_output=True)
-        except subprocess.CalledProcessError as e:
-            print("Failed to create report", url, e)
-            print(e.output)
+        # Execute the command (note: we do not use check=True; VeraPDF failures should not crash the run)
+        result = subprocess.run(verapdf_command, shell=True, text=True, capture_output=True)
+        if getattr(result, "returncode", 0) != 0:
+            # The JSON may still have been written; violation_counter handles empty/invalid JSON.
+            print(f"Warning: VeraPDF returned non-zero exit code ({result.returncode}) for {url}")
 
         violations = violation_counter(temp_profile_path)
-        violations.update(pdf_check(temp_pdf_path))
+
+        pdf_meta = pdf_check(temp_pdf_path) or {}
+        # If pdf_check hit a parser error, treat this as a failed report so we don't insert a misleading report.
+        if isinstance(pdf_meta, dict) and pdf_meta.get("pdf_check_error"):
+            return {"report": {"report": str(pdf_meta.get("pdf_check_error")), "status": "Failed"}}
+
+        # Ensure we have a stable fingerprint for DB insert.
+        if not isinstance(pdf_meta, dict) or not pdf_meta.get("file_hash"):
+            return {"report": {"report": "Failed to compute PDF fingerprint (file_hash).", "status": "Failed"}}
+
+        violations.update(pdf_meta)
         return {"report": {"report": violations, "status": "Succeeded"}}
-    except KeyError as e:
+
+    except Exception as e:
         print("Failed to create report", url, e)
-        return {"report": {"report": "", "status": "Failed"}}
+        return {"report": {"report": f"Failed to create report: {e}", "status": "Failed"}}
 
 
 

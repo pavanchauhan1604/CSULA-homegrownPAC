@@ -123,12 +123,23 @@ def delete_duplicate_entries():
 def download_all_dprc_will_remediate_pdfs_by_site(site_name):
     box_folder = rf'C:\Users\913678186\Box\ATI\PDF Accessibility\SF State Website PDF Scans\{site_name}'
     box_temp_folder = os.path.join(box_folder, 'temp')
-    xlsx_file = os.path.join(box_folder, f"{site_name.split('-')[0]}-pdf-scans.xlsx")
+    # Reports are now generated with timestamped names; pick the most recent.
+    xlsx_candidates = [
+        os.path.join(box_folder, f)
+        for f in os.listdir(box_folder)
+        if f.lower().endswith('.xlsx') and os.path.isfile(os.path.join(box_folder, f))
+    ]
+    xlsx_file = max(xlsx_candidates, key=os.path.getmtime) if xlsx_candidates else None
 
     if not os.path.exists(box_folder):
         print(f"File does not exist: {box_folder}")
         return
     print(f"Found folder: {box_folder}")
+
+    if not xlsx_file:
+        print(f"No .xlsx report found in: {box_folder}")
+        return
+    print(f"Using report: {xlsx_file}")
 
     # Compile hyperlink regex
     hyperlink_pattern = re.compile(r'HYPERLINK\("([^"]+)"')

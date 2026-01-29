@@ -23,6 +23,51 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Import configuration
 import config
 
+
+def require_existing_csvs():
+    """Ensure required CSV inputs exist when not generating fixtures."""
+    required = [
+        ("sites", config.SITES_CSV),
+        ("employees", config.EMPLOYEES_CSV),
+        ("managers", config.MANAGERS_CSV),
+        ("site_assignments", config.SITE_ASSIGNMENTS_CSV),
+    ]
+    missing = [(label, path) for label, path in required if not Path(path).exists()]
+    if missing:
+        msg_lines = ["Missing required CSV input(s):"]
+        for label, path in missing:
+            msg_lines.append(f"  - {label}: {path}")
+        msg_lines.append("\nEither create/edit these CSVs under data/, or rerun with --generate-csvs to create sample files.")
+        raise FileNotFoundError("\n".join(msg_lines))
+
+
+def reset_database_file():
+    """Remove the existing database file so test setup is deterministic."""
+    db_path = Path(config.DATABASE_PATH)
+    if db_path.exists():
+        try:
+            db_path.unlink()
+            print(f"🧹 Removed existing database: {db_path}")
+        except Exception as e:
+            # If the DB is locked, fall back to clearing tables after connecting.
+            print(f"⚠️  Could not delete database file ({e}); will attempt to clear tables instead.")
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            for table in [
+                "site_assignment",
+                "pdf_report",
+                "drupal_pdf_files",
+                "failure",
+                "site_user",
+                "drupal_site",
+            ]:
+                try:
+                    cursor.execute(f"DELETE FROM {table}")
+                except Exception:
+                    pass
+            conn.commit()
+            conn.close()
+
 def create_database_tables():
     """Create all necessary database tables."""
     print("\n📊 Creating database tables...")
@@ -165,17 +210,23 @@ def create_test_sites_csv():
 def create_test_employees_csv():
     """Create test employees CSV files."""
     print("\n👥 Creating test employees.csv file...")
-    
-    # Base employee data
-    all_employees = [
-        ("Pavan Chauhan", "123456", "pchauha5@calstatela.edu"),
-        ("Jane Smith", "234567", "jane.smith@calstatela.edu"),
-        ("Bob Johnson", "345678", "bob.johnson@calstatela.edu"),
-    ]
-    
-    # Only create employees for the number of domains we have
-    num_domains = len(config.TEST_DOMAINS) if config.USE_TEST_DOMAINS_ONLY else 3
-    test_employees = all_employees[:num_domains]
+
+    # Keep generated fixtures generic. For real test runs, edit data/employees.csv
+    # directly (mirrors deployment import behavior).
+    example_path = Path(str(config.EMPLOYEES_CSV) + ".example")
+    test_employees = []
+    if example_path.exists():
+        with open(example_path, "r", newline="") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            for row in reader:
+                if row and len(row) >= 3:
+                    test_employees.append((row[0], row[1], row[2]))
+    if not test_employees:
+        test_employees = [
+            ("John Doe", "12345678", "jdoe@calstatela.edu"),
+            ("Jane Smith", "87654321", "jsmith@calstatela.edu"),
+        ]
     
     with open(config.EMPLOYEES_CSV, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -191,8 +242,8 @@ def create_test_managers_csv():
     """Create test managers CSV file."""
     print("\n👔 Creating test managers.csv file...")
     
-    # Make the first employee a manager
-    test_managers = [("123456",)]
+    # Make the first employee a manager (fixtures only)
+    test_managers = [("12345678",)]
     
     with open(config.MANAGERS_CSV, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -206,13 +257,12 @@ def create_test_managers_csv():
 def create_test_site_assignments_csv(test_sites, test_employees):
     """Create test site assignments CSV file."""
     print("\n📋 Creating test site_assignments.csv file...")
-    
-    # Create assignments based on actual sites and employees
+
+    # Assign sites round-robin across employees (fixtures only)
     test_assignments = []
-    for i, (domain, security_group) in enumerate(test_sites):
-        if i < len(test_employees):
-            name, emp_id, email = test_employees[i]
-            test_assignments.append((security_group, name, emp_id, email))
+    for idx, (_, security_group) in enumerate(test_sites):
+        name, emp_id, email = test_employees[idx % len(test_employees)]
+        test_assignments.append((security_group, name, emp_id, email))
     
     with open(config.SITE_ASSIGNMENTS_CSV, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -235,18 +285,27 @@ def populate_database_from_csv():
     with open(config.SITES_CSV, 'r') as f:
         reader = csv.reader(f)
         for row in reader:
-            if row:
-                domains = row[0].split(',')
-                security_group = row[1] if len(row) > 1 else None
-                
-                for domain in domains:
-                    domain = domain.strip().replace("www.", "", 1)
-                    cursor.execute(
-                        "INSERT OR IGNORE INTO drupal_site (domain_name, security_group_name) VALUES (?, ?)",
-                        (domain, security_group)
-                    )
-                    if cursor.rowcount > 0:
-                        sites_added += 1
+            if not row:
+                continue
+
+            domain_cell = (row[0] if len(row) > 0 else "").strip()
+            if not domain_cell:
+                continue
+
+            domains = domain_cell.split(',')
+            security_group = (row[1].strip() if len(row) > 1 and row[1] else None)
+
+            for domain in domains:
+                domain = domain.strip()
+                if not domain:
+                    continue
+                domain = domain.replace("www.", "", 1)
+                cursor.execute(
+                    "INSERT OR IGNORE INTO drupal_site (domain_name, security_group_name) VALUES (?, ?)",
+                    (domain, security_group)
+                )
+                if cursor.rowcount > 0:
+                    sites_added += 1
     
     conn.commit()
     print(f"  ✓ Added {sites_added} sites to database")
@@ -381,6 +440,14 @@ def main():
     """Main setup function."""
     parser = argparse.ArgumentParser(description="Setup Test Environment for CSULA PDF Checker")
     parser.add_argument("--force", action="store_true", help="Skip confirmation prompt")
+    parser.add_argument(
+        "--generate-csvs",
+        action="store_true",
+        help=(
+            "Overwrite data/*.csv with sample fixtures (sites/employees/managers/assignments). "
+            "By default, this script uses the existing CSV files without overwriting them."
+        ),
+    )
     args = parser.parse_args()
 
     print("=" * 70)
@@ -405,14 +472,22 @@ def main():
             return
     
     try:
+        # Ensure we start from a clean slate
+        reset_database_file()
+
         # Step 1: Create database tables
         create_database_tables()
         
-        # Step 2: Create test CSV files
-        test_sites = create_test_sites_csv()
-        test_employees = create_test_employees_csv()
-        create_test_managers_csv()
-        create_test_site_assignments_csv(test_sites, test_employees)
+        # Step 2: Prepare CSV inputs
+        if args.generate_csvs:
+            print("\n🧪 Generating sample CSV fixtures (overwriting data/*.csv)...")
+            test_sites = create_test_sites_csv()
+            test_employees = create_test_employees_csv()
+            create_test_managers_csv()
+            create_test_site_assignments_csv(test_sites, test_employees)
+        else:
+            print("\n📄 Using existing CSV files (no overwrites).")
+            require_existing_csvs()
         
         # Step 3: Populate database from CSV files
         populate_database_from_csv()

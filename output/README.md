@@ -5,7 +5,7 @@ All generated outputs are saved in this folder.
 ## Subfolders
 
 - **reports/**: Excel and HTML reports
-  - Site-specific Excel files: `{domain}-pdf-scans.xlsx`
+  - Site-specific Excel files: `{domain}-{YYYY-MM-DD_HH-MM-SS}.xlsx`
   - Comprehensive HTML dashboard: `Drupal-PDF-Accessibility-Report-{Month}-{Year}.html`
 
 - **emails/**: Saved email MSG files (if using Outlook save feature)

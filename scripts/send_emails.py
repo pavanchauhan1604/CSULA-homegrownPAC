@@ -107,7 +107,9 @@ def main():
         print("\n" + "=" * 80)
         print("⚠️  IMPORTANT: You are about to send emails to the following recipients:")
         print("=" * 80)
-        for _, recipient_email, attachments in emails:
+        for email_item in emails:
+            recipient_email = email_item[1] if len(email_item) > 1 else "<unknown>"
+            attachments = email_item[2] if len(email_item) > 2 else []
             print(f"   • {recipient_email}")
             if attachments:
                 print(f"     📎 {len(attachments)} attachment(s)")
@@ -147,7 +149,10 @@ def main():
 
     if getattr(config, "SAVE_EMAIL_COPIES", False):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        for idx, (html_content, recipient_email, attachments) in enumerate(emails, 1):
+        for idx, email_item in enumerate(emails, 1):
+            html_content = email_item[0]
+            recipient_email = email_item[1]
+            attachments = email_item[2] if len(email_item) > 2 else []
             base_filename = f"{timestamp}_{idx}_{_safe_email_filename(recipient_email)}"
             html_filepath = config.EMAIL_COPIES_DIR / f"{base_filename}.html"
             with open(html_filepath, "w", encoding="utf-8") as f:

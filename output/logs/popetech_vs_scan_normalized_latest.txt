@@ -1,0 +1,10 @@
+﻿scan_unique=9
+pop_unique=11
+missing_in_scan=2
+extra_in_scan=0
+
+missing_first20:
+https://intopia.digital/wp-content/uploads/2019/10/2019-WCAG2.1-Map-Intopia-plus-reading-order.pdf
+https://www.calstatela.edu/sites/default/files/Renewed Campus Commitment ATI_103024.pdf
+
+extra_first20:

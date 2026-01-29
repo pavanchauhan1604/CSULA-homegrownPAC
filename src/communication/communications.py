@@ -7,6 +7,25 @@ from src.core.filters import is_high_priority, get_priority_level
 import config
 
 
+def _display_domain(domain_key: str) -> str:
+    """Convert internal domain keys (e.g., 'calstatela.edu_hhs') to a user-facing label.
+
+    We keep underscores internally for safe filenames / keys, but emails should show
+    paths with slashes (e.g., 'calstatela.edu/hhs').
+    """
+    if not domain_key:
+        return ""
+    if "_" not in domain_key:
+        return domain_key
+
+    host, remainder = domain_key.split("_", 1)
+    remainder = remainder.strip("_")
+    if not remainder:
+        return host
+    # Convert any remaining underscores in the path back to slashes.
+    return f"{host}/{remainder.replace('_', '/')}"
+
+
 def generate_pdf_details_by_employee(employee_id):
     """
     Generate detailed PDF information for an employee.
@@ -87,6 +106,10 @@ def create_html_email_summary(data):
         pdfs = domain_data.get("pdfs", [])
         if not pdfs:
             continue
+
+        display_domain = _display_domain(domain)
+
+        unique_count = len({p.get("pdf_uri") for p in pdfs if p.get("pdf_uri")})
             
         # Count by priority
         high_count = sum(1 for p in pdfs if p["priority_level"] == "high")
@@ -97,10 +120,11 @@ def create_html_email_summary(data):
         html += f'''
         <div style="margin: 20px 0; padding: 20px; background-color: #f5f5f5; border-left: 4px solid #003262; border-radius: 5px;">
             <h2 style="color: #003262; margin: 0 0 15px 0; font-size: 18px;">
-                {domain}
+                {display_domain}
             </h2>
             <div style="font-size: 16px; line-height: 1.8;">
                 <p style="margin: 5px 0;"><strong>Total PDFs Found:</strong> {len(pdfs)}</p>
+                <p style="margin: 5px 0;"><strong>Unique PDFs:</strong> {unique_count}</p>
                 <p style="margin: 5px 0;">
                     <span style="display: inline-block; width: 20px; height: 20px; background-color: #8B0000; margin-right: 8px; vertical-align: middle;"></span>
                     <strong>High Priority:</strong> {high_count} PDFs
@@ -162,13 +186,34 @@ def build_emails():
                 except Exception as e:
                     print(f"Error getting Excel path for {domain}: {e}")
 
+            domains_with_pdfs = [
+                domain for domain, payload in (pdf_details or {}).items()
+                if payload and payload.get("pdfs")
+            ]
+            display_domains_with_pdfs = [_display_domain(d) for d in domains_with_pdfs]
+
+            # Subject should indicate which domain(s) this report covers.
+            base_subject = getattr(config, "EMAIL_SUBJECT", "PDF Accessibility Report")
+            if len(display_domains_with_pdfs) == 1:
+                subject = f"{base_subject} - {display_domains_with_pdfs[0]}"
+            elif len(display_domains_with_pdfs) > 1:
+                shown = ", ".join(display_domains_with_pdfs[:3])
+                more = (
+                    f" (+{len(display_domains_with_pdfs) - 3} more)"
+                    if len(display_domains_with_pdfs) > 3
+                    else ""
+                )
+                subject = f"{base_subject} - {shown}{more}"
+            else:
+                subject = base_subject
+
             template_values = {
                 "employee_first_name": employee[0],
                 "employee_full_name": f"{employee[0]} {employee[1]}",
                 "pdf_data_table": html_summary
             }
             email_text = template_email(template_values)
-            emails.append( (email_text, employee[2], attachments) )
+            emails.append((email_text, employee[2], attachments, subject))
     return emails
 
 

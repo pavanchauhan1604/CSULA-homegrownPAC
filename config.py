@@ -143,8 +143,8 @@ ROBOTSTXT_OBEY = False  # Set to True if you want to respect robots.txt
 
 # Email sender name and address
 EMAIL_SENDER_NAME = "Cal State LA Accessibility Team"
-# EMAIL_SENDER_EMAIL = "accessibility@calstatela.edu"
-EMAIL_SENDER_EMAIL = "pchauha5@calstatela.edu"
+# Used for display/metadata in templates and docs. Actual sending is done via Outlook COM.
+EMAIL_SENDER_EMAIL = ACCESSIBILITY_EMAIL
 
 # Default email subject line
 EMAIL_SUBJECT = "PDF Accessibility Report - Cal State LA"
@@ -162,7 +162,7 @@ EMAIL_DRY_RUN = False
 
 # If set, emails will be created "on behalf of" this address.
 # This requires Exchange permissions. Leave as None to send as the signed-in mailbox.
-OUTLOOK_SENT_ON_BEHALF_OF = None
+OUTLOOK_SENT_ON_BEHALF_OF = ACCESSIBILITY_EMAIL
 
 # Choose whether Outlook automation sends emails or saves draft .msg files.
 # - False: send immediately via Outlook
@@ -194,7 +194,11 @@ EMAIL_COPIES_DIR.mkdir(exist_ok=True)
 MONTHLY_REPORT_TEMPLATE = OUTPUT_REPORTS_DIR / "monthly_report.html"
 
 # Excel report settings
-EXCEL_REPORT_NAME_FORMAT = "{site_name}-pdf-scans.xlsx"
+# Excel report settings
+# New default report naming: {domain_name}-{YYYY-MM-DD_HH-MM-SS}.xlsx
+# Example: www.calstatela.edu_accessibility-2026-01-25_06-26-57.xlsx
+EXCEL_REPORT_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
+EXCEL_REPORT_NAME_FORMAT = "{domain_name}-{timestamp}.xlsx"
 
 # =============================================================================
 # TEST/DEVELOPMENT SETTINGS
@@ -218,7 +222,8 @@ EXCEL_REPORT_NAME_FORMAT = "{site_name}-pdf-scans.xlsx"
 #     "www.calstatela.edu_news",
 # ]
 TEST_DOMAINS = [
-    "www.calstatela.edu_accessibility",
+    # Use underscore (_) instead of slash (/) for URL paths
+    "www.calstatela.edu_hhs",
 ]
 
 
@@ -265,9 +270,14 @@ def get_site_output_path(domain_name):
     return PDF_SITES_FOLDER / folder_name
 
 
-def get_excel_report_path(domain_name):
+def get_excel_report_path(domain_name, *, timestamp=None, prefer_latest=True):
     """
     Get the Excel report path for a specific domain.
+
+    By default this returns the most recently generated report in the domain's
+    output folder (supports both the new timestamped naming and legacy names).
+    Set prefer_latest=False to get a new timestamped path for generating a
+    fresh report.
     
     Args:
         domain_name (str): Domain name (e.g., "www.calstatela.edu")
@@ -275,9 +285,26 @@ def get_excel_report_path(domain_name):
     Returns:
         Path: Path object for the Excel report file
     """
-    folder_name = get_domain_folder_name(domain_name)
     site_path = get_site_output_path(domain_name)
-    report_name = EXCEL_REPORT_NAME_FORMAT.format(site_name=folder_name.split('-')[0])
+    site_path.mkdir(parents=True, exist_ok=True)
+
+    # Consumers (emails, tooling) usually want the newest report.
+    if prefer_latest:
+        # New naming convention.
+        candidates = list(site_path.glob(f"{domain_name}-*.xlsx"))
+        # Legacy naming convention(s).
+        candidates.extend(site_path.glob("*-pdf-scans*.xlsx"))
+        # Ignore Excel temp/lock files.
+        candidates = [p for p in candidates if p.is_file() and not p.name.startswith("~$")]
+        if candidates:
+            return max(candidates, key=lambda p: p.stat().st_mtime)
+
+    if timestamp is None:
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime(EXCEL_REPORT_TIMESTAMP_FORMAT)
+
+    report_name = EXCEL_REPORT_NAME_FORMAT.format(domain_name=domain_name, timestamp=timestamp)
     return site_path / report_name
 
 

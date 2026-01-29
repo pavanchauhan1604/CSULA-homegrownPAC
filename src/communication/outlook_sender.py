@@ -136,13 +136,13 @@ def send_email_outlook(
 
 
 def send_emails_batch_outlook(
-    emails: Iterable[Tuple[str, str, List[str]]],
+    emails: Iterable[Tuple],
     options: OutlookSendOptions,
     dry_run: bool = False,
 ) -> dict:
     """Send multiple emails via Outlook with a results summary."""
 
-    emails_list: List[Tuple[str, str, List[str]]] = list(emails)
+    emails_list: List[Tuple] = list(emails)
 
     results = {
         "sent": [],
@@ -159,7 +159,27 @@ def send_emails_batch_outlook(
     print(f"\n📧 Outlook sending {len(emails_list)} email(s)...")
     print("=" * 80)
 
-    for idx, (html_content, recipient_email, attachments) in enumerate(emails_list, 1):
+    for idx, email_item in enumerate(emails_list, 1):
+        if len(email_item) == 3:
+            html_content, recipient_email, attachments = email_item
+            subject_override = None
+        elif len(email_item) == 4:
+            html_content, recipient_email, attachments, subject_override = email_item
+        else:
+            results["failed"].append({"email": "<unknown>", "error": f"Unexpected email tuple shape: {email_item}"})
+            continue
+
+        # Override subject per email if provided.
+        effective_options = options
+        if subject_override:
+            effective_options = OutlookSendOptions(
+                subject=str(subject_override),
+                sent_on_behalf_of=options.sent_on_behalf_of,
+                save_as_msg=options.save_as_msg,
+                msg_output_dir=options.msg_output_dir,
+                display_only=options.display_only,
+            )
+
         print(f"\n[{idx}/{len(emails_list)}] To: {recipient_email}")
         if attachments:
             print(f"   📎 Attachments: {len(attachments)} file(s)")
@@ -174,7 +194,7 @@ def send_emails_batch_outlook(
         success, message, saved_path = send_email_outlook(
             recipient_email=recipient_email,
             html_content=html_content,
-            options=options,
+            options=effective_options,
             attachments=attachments,
         )
 

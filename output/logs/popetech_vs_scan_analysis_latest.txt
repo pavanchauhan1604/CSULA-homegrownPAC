@@ -1,0 +1,31 @@
+﻿XLSX: C:\Users\pchauha4\source\repos\CSULA-homegrownPAC\output\scans\calstatela-edu_accessibility\calstatela-pdf-scans.xlsx
+PopeTech CSV: C:\Users\pchauha4\Downloads\popetech-report-2026-01-25\pages\alerts_link_to_pdf_document.csv
+
+Sheets: Scanned PDFs, Unique PDFs, Failure, Instructions, Sheet
+Using sheet for unique comparison: Unique PDFs
+UsedRange (Unique PDFs): rows=7 cols=14
+Headers (Unique PDFs): pdf_uri | fingerprint | domain_name | violations | failed_checks | tagged | pdf_text_type | title_set | language_set | page_count | has_form | approved_pdf_exporter | link_count | sample_parent_uri
+
+--- Our scan (Unique PDFs) ---
+Rows with pdf_uri values: 6
+Unique normalized PDF URLs: 6
+
+--- PopeTech ---
+Rows (page->link): 136
+Unique normalized PDF URLs: 11
+
+--- Our crawler output (scanned_pdfs.txt) ---
+Rows: 97
+Unique normalized PDF URLs: 6
+
+--- Comparison (unique normalized PDF URLs) ---
+In PopeTech, not in our scan: 5
+In our scan, not in PopeTech: 0
+
+Missing from our scan (first 30):
+  https://intopia.digital/wp-content/uploads/2019/10/2019-WCAG2.1-Map-Intopia-plus-reading-order.pdf
+  https://www.calstatela.edu/sites/default/files/2022 NASPA Annual Conference ML_archive.pdf
+  https://www.calstatela.edu/sites/default/files/Golden Eagle Awards Sp18_application_archive.pdf
+  https://www.calstatela.edu/sites/default/files/PBI Newsletter Feb. 2022 V06.pdf
+  https://www.calstatela.edu/sites/default/files/PBI Newsletter Feb. 2022 V06_archive.pdf
+

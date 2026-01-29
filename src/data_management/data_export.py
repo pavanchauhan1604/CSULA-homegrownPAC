@@ -139,13 +139,33 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
     scanned_pdfs_ws = wb.create_sheet("Scanned PDFs", 0)
     wb.active = 0
 
+    # Create "Unique PDFs" worksheet
+    unique_pdfs_ws = wb.create_sheet("Unique PDFs", 1)
+
     # Create "Failure" worksheet
-    failure_ws = wb.create_sheet("Failure", 1)
+    failure_ws = wb.create_sheet("Failure", 2)
+
+    # Create "Instructions" worksheet
+    instructions_ws = wb.create_sheet("Instructions", 3)
 
     def add_data_to_scanned_pdfs(data, worksheet):
         if not data:
             print("No data to write to Excel.")
             return
+
+        def pdf_title_from_url(url: str) -> str:
+            try:
+                from urllib.parse import urlsplit, unquote
+
+                path = urlsplit(str(url)).path
+                name = path.rsplit('/', 1)[-1] if path else str(url)
+                name = unquote(name)
+                if name.lower().endswith('.pdf'):
+                    name = name[:-4]
+                name = name.replace('_', ' ').replace('-', ' ').strip()
+                return ' '.join(name.split()) if name else str(url)
+            except Exception:
+                return str(url)
 
         # 1) Build the columns list from the namedtuple fields
         columns = list(data[0]._fields)
@@ -153,6 +173,9 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
         columns = ["fingerprint" if col == "file_hash" else col for col in columns]
         # Remove the 'box_folder' column
         columns.remove('box_folder')
+
+        # Add a friendly title column first (derived from pdf_uri)
+        columns.insert(0, 'pdf_title')
 
         # Add custom columns to the end
         columns.append("Errors/Page")
@@ -207,6 +230,9 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
                 item_list.append("")
                 item_list.append("")
 
+                # Insert the PDF title as the first column (keeps existing index-based logic intact above)
+                item_list.insert(0, pdf_title_from_url(item[0]))
+
                 # Append the row to the worksheet
                 worksheet.append(item_list)
                 current_row = worksheet._current_row
@@ -231,9 +257,9 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
                     for cell in worksheet[current_row]:
                         cell.fill = red_fill
 
-        # Make columns A and B appear as hyperlinks (blue + underline)
+        # Make PDF URL + parent URL appear as hyperlinks (blue + underline)
         max_row = worksheet.max_row
-        for row in worksheet.iter_rows(min_row=2, min_col=1, max_col=2, max_row=max_row):
+        for row in worksheet.iter_rows(min_row=2, min_col=2, max_col=3, max_row=max_row):
             for cell in row:
                 cell.font = Font(color='0563C1', underline='single')
 
@@ -275,50 +301,116 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
         failure_table.tableStyleInfo = style
         worksheet.add_table(failure_table)
 
-    # ---------------- MAIN LOGIC ----------------
+    def add_data_to_unique_pdfs(data, worksheet):
+        if not data:
+            print("No data to write to Excel.")
+            return
 
-    # 1) Populate the "Scanned PDFs" sheet
-    add_data_to_scanned_pdfs(data, scanned_pdfs_ws)
+        def pdf_title_from_url(url: str) -> str:
+            try:
+                from urllib.parse import urlsplit, unquote
 
-    # 2) Create the "Failure" sheet
-    add_data_to_failure(failure_data, failure_ws)
+                path = urlsplit(str(url)).path
+                name = path.rsplit('/', 1)[-1] if path else str(url)
+                name = unquote(name)
+                if name.lower().endswith('.pdf'):
+                    name = name[:-4]
+                name = name.replace('_', ' ').replace('-', ' ').strip()
+                return ' '.join(name.split()) if name else str(url)
+            except Exception:
+                return str(url)
 
-    # 3) Merging a block for instructional text in "Scanned PDFs"
-    #    after we've created/filled "DataTable" in that sheet
+        columns = [
+            "pdf_title",
+            "pdf_uri",
+            "fingerprint",
+            "domain_name",
+            "violations",
+            "failed_checks",
+            "tagged",
+            "pdf_text_type",
+            "title_set",
+            "language_set",
+            "page_count",
+            "has_form",
+            "approved_pdf_exporter",
+            "link_count",
+            "sample_parent_uri",
+        ]
+        worksheet.append(columns)
 
-    #   A) Locate the table named "DataTable"
-    if "DataTable" in scanned_pdfs_ws.tables:
-        table_obj = scanned_pdfs_ws.tables["DataTable"]
-        table_range = table_obj.ref  # e.g. "A1:F20"
+        # Build an aggregation by pdf_uri
+        by_pdf = {}
+        for item in data:
+            item_list = list(item)
+            # Skip if parent_uri is a node link
+            if check_for_node(item_list[1]):
+                continue
+            pdf_uri = getattr(item, "pdf_uri", None)
+            parent_uri = getattr(item, "parent_uri", None)
+            if not pdf_uri:
+                continue
 
-        #   B) Determine last data row from table ref
-        min_col, min_row, max_col, max_row = range_boundaries(table_range)
-        last_data_row = max_row
+            if pdf_uri not in by_pdf:
+                by_pdf[pdf_uri] = {
+                    "item": item,
+                    "parents": set(),
+                }
+            if parent_uri:
+                by_pdf[pdf_uri]["parents"].add(str(parent_uri).split(" ")[0])
 
-        #   C) Start 2 rows below the table
-        start_merge_row = last_data_row + 2
+        for pdf_uri, agg in by_pdf.items():
+            item = agg["item"]
+            parents = sorted(agg["parents"]) if agg["parents"] else []
+            sample_parent = parents[0] if parents else ""
+            file_hash = getattr(item, "file_hash", "")
+            fingerprint = (file_hash or "")[0:6]
 
-        #   D) We want to merge 10 columns wide & 10 rows tall, for example
-        rows_merged = 10
-        cols_merged = 10
+            row = [
+                pdf_title_from_url(pdf_uri),
+                f'=HYPERLINK("{pdf_uri}", "{pdf_uri}")',
+                fingerprint,
+                getattr(item, "domain_name", ""),
+                getattr(item, "violations", ""),
+                getattr(item, "failed_checks", ""),
+                "Yes" if getattr(item, "tagged", 0) == 1 else "No",
+                getattr(item, "pdf_text_type", ""),
+                getattr(item, "title_set", ""),
+                getattr(item, "language_set", ""),
+                getattr(item, "page_count", ""),
+                "Yes" if getattr(item, "has_form", 0) == 1 else "No",
+                "Yes" if getattr(item, "approved_pdf_exporter", 0) == 1 else "No",
+                len(parents),
+                f'=HYPERLINK("{sample_parent}", "{sample_parent}")' if sample_parent else "",
+            ]
+            worksheet.append(row)
 
-        #   E) Let's assume we want to start merging at column 1 (A),
-        #      or you can shift columns if needed
-        start_col = 1
+        # Make hyperlink columns appear as hyperlinks (blue + underline)
+        max_row = worksheet.max_row
+        # pdf_uri is now column B
+        for row in worksheet.iter_rows(min_row=2, min_col=2, max_col=2, max_row=max_row):
+            for cell in row:
+                cell.font = Font(color='0563C1', underline='single')
+        for row in worksheet.iter_rows(min_row=2, min_col=len(columns), max_col=len(columns), max_row=max_row):
+            for cell in row:
+                if cell.value:
+                    cell.font = Font(color='0563C1', underline='single')
 
-        end_merge_row = start_merge_row + rows_merged - 1
-        end_merge_col = start_col + cols_merged - 1
-
-        #   F) Merge the cells
-        scanned_pdfs_ws.merge_cells(
-            start_row=start_merge_row,
-            start_column=start_col,
-            end_row=end_merge_row,
-            end_column=end_merge_col
+        # Convert the data into a formatted Table
+        table_range = f"A1:{chr(64 + len(columns))}{max_row}"
+        data_table = Table(displayName="UniquePdfTable", ref=table_range)
+        style = TableStyleInfo(
+            name="TableStyleMedium9",
+            showFirstColumn=False,
+            showLastColumn=False,
+            showRowStripes=True,
+            showColumnStripes=True
         )
+        data_table.tableStyleInfo = style
+        worksheet.add_table(data_table)
 
-        #   G) Put some instructional text in the top-left of the merged area
-        cell = scanned_pdfs_ws.cell(row=start_merge_row, column=start_col)
+    def add_instructions(worksheet):
+        cell = worksheet.cell(row=1, column=1)
         cell.value = (
             "Important Instructions:\n\n"
             "1) Please review PDF accessibility requirements at: https://www.calstatela.edu/accessibility\n"
@@ -330,16 +422,28 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
             "6) These scans only look at files hosted on drupal or box, if you feel files are missing please let us know and we can run a new scan.\n"
             "7) For questions, training, or feedback, contact: accessibility@calstatela.edu\n"
         )
-        #   H) Optional styling: wrap, center, bold, color, etc.
-        cell.alignment = Alignment(wrap_text=True, horizontal='center', vertical='center')
-        cell.font = Font(bold=True, color="FF0000")
+        cell.alignment = Alignment(wrap_text=True, horizontal='left', vertical='top')
+        cell.font = Font(bold=True)
+        worksheet.column_dimensions['A'].width = 120
+        worksheet.row_dimensions[1].height = 300
 
-    else:
-        print("DataTable not found in Scanned PDFs sheet. Skipping merged instructions block.")
+    # ---------------- MAIN LOGIC ----------------
+
+    # 1) Populate the "Scanned PDFs" sheet
+    add_data_to_scanned_pdfs(data, scanned_pdfs_ws)
+
+    # 1b) Populate the "Unique PDFs" sheet
+    add_data_to_unique_pdfs(data, unique_pdfs_ws)
+
+    # 2) Create the "Failure" sheet
+    add_data_to_failure(failure_data, failure_ws)
+
+    # 3) Add instructions on a dedicated worksheet (keeps Scanned PDFs table clean)
+    add_instructions(instructions_ws)
 
     # 4) Save the workbook
     wb.save(file_name)
-    print(f"Data written to {file_name} with a table format and merged instructions.")
+    print(f"Data written to {file_name} with a table format.")
 
 
 

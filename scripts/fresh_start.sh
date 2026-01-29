@@ -1,16 +1,39 @@
 #!/bin/bash
 
+set -euo pipefail
+
 echo "============================================================"
 echo "🧹 FRESH START - Complete Clean Reset"
 echo "============================================================"
 echo ""
 
-cd /Users/pavan/Work/CSULA-homegrownPAC
+# Move to project root (relative to this script) so it works on any machine.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+echo "📍 Project root: $(pwd)"
+
+# Determine Python executable (prefer repo venv)
+if [ -f ".venv/Scripts/python.exe" ]; then
+    PYTHON_CMD=".venv/Scripts/python.exe"
+elif [ -f ".venv/bin/python" ]; then
+    PYTHON_CMD=".venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+else
+    PYTHON_CMD="python"
+fi
+echo "🐍 Using Python: $PYTHON_CMD"
 
 # Stop any running processes
 echo "⏹️  Stopping any running processes..."
-pkill -f "python.*master_functions" 2>/dev/null
-pkill -f "scrapy" 2>/dev/null
+if command -v pkill >/dev/null 2>&1; then
+    pkill -f "python.*master_functions" 2>/dev/null || true
+    pkill -f "scrapy" 2>/dev/null || true
+else
+    echo "   (pkill not available on this system; skipping process stop)"
+fi
 sleep 2
 
 # Backup existing database (just in case)
@@ -28,6 +51,7 @@ echo "🗑️  Cleaning output directories..."
 rm -rf output/scans/*
 rm -rf output/emails/*.html
 rm -f output/emails/email_template.html
+rm -f output/email_templates/email_template.html
 
 # Clean temp files
 echo "🗑️  Cleaning temp files..."
@@ -45,13 +69,15 @@ find crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders -name '*_spider.py' -d
 echo "📁 Recreating directory structure..."
 mkdir -p output/scans
 mkdir -p output/emails
+mkdir -p output/email_templates
 mkdir -p output/backups
 mkdir -p output/reports
 mkdir -p temp
 
 # Recreate email template
 echo "📧 Creating email template..."
-cat > output/emails/email_template.html << 'TEMPLATE'
+# Primary template location used by config.EMAIL_TEMPLATE_PATH
+cat > output/email_templates/email_template.html << 'TEMPLATE'
 <!DOCTYPE html>
 <html>
 <head>
@@ -129,6 +155,9 @@ cat > output/emails/email_template.html << 'TEMPLATE'
 </html>
 TEMPLATE
 
+# Legacy compatibility: keep a copy where older tooling expected it.
+cp -f output/email_templates/email_template.html output/emails/email_template.html
+
 echo ""
 echo "============================================================"
 echo "✅ Fresh Start Complete!"
@@ -141,7 +170,7 @@ echo "   • Temp files cleared"
 echo "   • Email template recreated"
 echo ""
 echo "📋 Current configuration (from config.py):"
-python3 -c "import config; print(f'   • Institution: {config.INSTITUTION_DOMAIN}'); print(f'   • Test email: {config.TEST_EMAIL_RECIPIENT}'); print(f'   • Test mode: {config.USE_TEST_DOMAINS_ONLY}'); print(f'   • Test domain: {config.TEST_DOMAINS[0] if config.TEST_DOMAINS else \"None\"}')"
+"$PYTHON_CMD" -c "import config; print(f'   • Institution: {config.INSTITUTION_DOMAIN}'); print(f'   • Test email: {config.TEST_EMAIL_RECIPIENT}'); print(f'   • Test mode: {config.USE_TEST_DOMAINS_ONLY}'); print(f'   • Test domain: {config.TEST_DOMAINS[0] if config.TEST_DOMAINS else "None"}')"
 echo ""
 echo "🚀 Ready for fresh workflow run!"
 echo ""

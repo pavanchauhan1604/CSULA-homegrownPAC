@@ -141,11 +141,18 @@ print('Generating email reports...')
 emails = build_emails()
 
 os.makedirs('output/emails', exist_ok=True)
-for email_html, recipient, attachments in emails:
+for item in emails:
+    email_html = item[0]
+    recipient = item[1]
+    attachments = item[2]
+    subject = item[3] if len(item) > 3 else None
+
     filename = f'output/emails/email_{recipient.replace(\"@\", \"_at_\").replace(\".\", \"_\")}.html'
     with open(filename, 'w') as f:
         f.write(email_html)
     print(f'  ✓ Saved: {filename}')
+    if subject:
+        print(f'    Subject: {subject}')
 
 print('Email reports complete!')
 "

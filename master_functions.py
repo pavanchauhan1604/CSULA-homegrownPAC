@@ -18,42 +18,32 @@ def build_all_xcel_reports():
     all_sites = get_all_sites()
 
     for site in all_sites:
-        site_folder_name = site.replace(".", "-")
         site_data = get_pdf_reports_by_site_name(site)
         fail_data = get_site_failures(site)
 
-        # check if scans folder exists and if not create it
-        site_folder = os.path.join(config.PDF_SITES_FOLDER, site_folder_name)
-        if not os.path.exists(site_folder):
-            os.makedirs(site_folder)
+        site_folder = str(config.get_site_output_path(site))
+        os.makedirs(site_folder, exist_ok=True)
 
-        excel_file = os.path.join(site_folder, f"{site_folder_name.split('-')[0]}-pdf-scans.xlsx")
+        timestamp = datetime.now().strftime(config.EXCEL_REPORT_TIMESTAMP_FORMAT)
+        excel_file = str(
+            config.get_excel_report_path(site, timestamp=timestamp, prefer_latest=False)
+        )
         write_data_to_excel(site_data, fail_data, excel_file)
 
 
 def build_single_xcel_report(site_name):
 
-        site_folder_name = site_name.replace(".", "-")
         site_data = get_pdf_reports_by_site_name(site_name)
         print(site_data)
         fail_data = get_site_failures(site_name)
 
-        # check if scans folder exists and if not create it
-        site_folder = os.path.join(config.PDF_SITES_FOLDER, site_folder_name)
-        if not os.path.exists(site_folder):
-            os.makedirs(site_folder)
+        site_folder = str(config.get_site_output_path(site_name))
+        os.makedirs(site_folder, exist_ok=True)
 
-        #create a backup folder for xlxs file if it doesn't exist "backups"
-        backup_folder = os.path.join(site_folder, "backups")
-        if not os.path.exists(backup_folder):
-            os.makedirs(backup_folder)
-
-        # move the old file to the backup folder
-        excel_file = os.path.join(site_folder, f"{site_folder_name.split('-')[0]}-pdf-scans.xlsx")
-        if os.path.exists(excel_file):
-            backup_file = os.path.join(backup_folder, f"{site_folder_name.split('-')[0]}-pdf-scans-backup-{datetime.now().strftime('%Y-%m-%d')}.xlsx")
-            os.rename(excel_file, backup_file)
-
+        timestamp = datetime.now().strftime(config.EXCEL_REPORT_TIMESTAMP_FORMAT)
+        excel_file = str(
+            config.get_excel_report_path(site_name, timestamp=timestamp, prefer_latest=False)
+        )
         write_data_to_excel(site_data, fail_data, excel_file)
 
 
