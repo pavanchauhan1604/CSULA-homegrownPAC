@@ -168,15 +168,19 @@ def build_emails():
         for employee in results:
 
             pdf_details = generate_pdf_details_by_employee(employee[3])
-            html_summary = create_html_email_summary(pdf_details)
-            
-            # Collect attachments (Excel reports)
-            attachments = []
-            for domain in pdf_details.keys():
-                # Construct the expected Excel report path
-                # Using the helper from config.py would be best, but we can reconstruct it here
-                # config.get_excel_report_path(domain)
-                
+            domains_with_pdfs = [
+                domain for domain, payload in (pdf_details or {}).items()
+                if payload and payload.get("pdfs")
+            ]
+
+            # One email per domain (even if recipient is the same).
+            base_subject = getattr(config, "EMAIL_SUBJECT", "PDF Accessibility Report")
+            for domain in domains_with_pdfs:
+                per_domain_details = {domain: pdf_details[domain]}
+                html_summary = create_html_email_summary(per_domain_details)
+
+                # Collect attachment for this domain only (Excel report).
+                attachments = []
                 try:
                     excel_path = config.get_excel_report_path(domain)
                     if excel_path.exists():
@@ -186,34 +190,15 @@ def build_emails():
                 except Exception as e:
                     print(f"Error getting Excel path for {domain}: {e}")
 
-            domains_with_pdfs = [
-                domain for domain, payload in (pdf_details or {}).items()
-                if payload and payload.get("pdfs")
-            ]
-            display_domains_with_pdfs = [_display_domain(d) for d in domains_with_pdfs]
+                subject = f"{base_subject} - {_display_domain(domain)}"
 
-            # Subject should indicate which domain(s) this report covers.
-            base_subject = getattr(config, "EMAIL_SUBJECT", "PDF Accessibility Report")
-            if len(display_domains_with_pdfs) == 1:
-                subject = f"{base_subject} - {display_domains_with_pdfs[0]}"
-            elif len(display_domains_with_pdfs) > 1:
-                shown = ", ".join(display_domains_with_pdfs[:3])
-                more = (
-                    f" (+{len(display_domains_with_pdfs) - 3} more)"
-                    if len(display_domains_with_pdfs) > 3
-                    else ""
-                )
-                subject = f"{base_subject} - {shown}{more}"
-            else:
-                subject = base_subject
-
-            template_values = {
-                "employee_first_name": employee[0],
-                "employee_full_name": f"{employee[0]} {employee[1]}",
-                "pdf_data_table": html_summary
-            }
-            email_text = template_email(template_values)
-            emails.append((email_text, employee[2], attachments, subject))
+                template_values = {
+                    "employee_first_name": employee[0],
+                    "employee_full_name": f"{employee[0]} {employee[1]}",
+                    "pdf_data_table": html_summary,
+                }
+                email_text = template_email(template_values)
+                emails.append((email_text, employee[2], attachments, subject))
     return emails
 
 

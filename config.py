@@ -223,7 +223,8 @@ EXCEL_REPORT_NAME_FORMAT = "{domain_name}-{timestamp}.xlsx"
 # ]
 TEST_DOMAINS = [
     # Use underscore (_) instead of slash (/) for URL paths
-    "www.calstatela.edu_osd",
+    "www.calstatela.edu_eop",
+    "www.calstatela.edu_studenthealthcenter",
 ]
 
 

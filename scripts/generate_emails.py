@@ -40,7 +40,7 @@ def main():
         attachments = item[2]
         subject = item[3] if len(item) > 3 else None
         # Create safe filename
-        safe_filename = f"email_{sanitize_email_for_filename(recipient_email)}.html"
+        safe_filename = f"email_{idx}_{sanitize_email_for_filename(recipient_email)}.html"
         output_path = output_dir / safe_filename
         
         # Save HTML file
