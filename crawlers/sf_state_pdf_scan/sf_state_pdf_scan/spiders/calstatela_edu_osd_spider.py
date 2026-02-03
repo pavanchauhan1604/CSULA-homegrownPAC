@@ -11,11 +11,11 @@ def get_box_contents(url):
     return (False, url)  # Placeholder implementation
 
 
-class CalstatelaEduHhsSpider(scrapy.Spider):
-    name = "calstatela_edu_hhs_spider"
+class CalstatelaEduOsdSpider(scrapy.Spider):
+    name = "calstatela_edu_osd_spider"
     allowed_domains = ["calstatela.edu"]
-    start_urls = ['https://calstatela.edu/hhs']
-    scope_path = "/hhs"
+    start_urls = ['https://calstatela.edu/osd']
+    scope_path = "/osd"
     custom_settings = {
         'DEPTH_LIMIT': 3,
         'CONCURRENT_REQUESTS': 16,
@@ -23,8 +23,8 @@ class CalstatelaEduHhsSpider(scrapy.Spider):
     }
 
     def __init__(self, *args, **kwargs):
-        super(CalstatelaEduHhsSpider, self).__init__(*args, **kwargs)
-        self.output_folder = "../../output/scans/calstatela-edu_hhs"
+        super(CalstatelaEduOsdSpider, self).__init__(*args, **kwargs)
+        self.output_folder = "../../output/scans/calstatela-edu_osd"
         self.pdf_links = []
         self.failed_box_links = []
         # Register spider_closed callback
