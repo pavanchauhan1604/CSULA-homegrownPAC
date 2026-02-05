@@ -142,13 +142,17 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
     # Create "Unique PDFs" worksheet
     unique_pdfs_ws = wb.create_sheet("Unique PDFs", 1)
 
+    # Optional grouped views (helpful when the same PDF repeats across many pages)
+    grouped_by_pdf_ws = wb.create_sheet("Grouped by PDF URL", 2)
+    grouped_by_parent_ws = wb.create_sheet("Grouped by Parent URL", 3)
+
     # Create "Failure" worksheet
-    failure_ws = wb.create_sheet("Failure", 2)
+    failure_ws = wb.create_sheet("Failure", 4)
 
     # Create "Instructions" worksheet
-    instructions_ws = wb.create_sheet("Instructions", 3)
+    instructions_ws = wb.create_sheet("Instructions", 5)
 
-    def add_data_to_scanned_pdfs(data, worksheet):
+    def add_data_to_scanned_pdfs(data, worksheet, *, table_name: str = "DataTable"):
         if not data:
             print("No data to write to Excel.")
             return
@@ -265,7 +269,7 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
 
         # Convert the data into a formatted Table
         table_range = f"A1:{chr(64 + len(columns))}{max_row}"
-        data_table = Table(displayName="DataTable", ref=table_range)
+        data_table = Table(displayName=table_name, ref=table_range)
         style = TableStyleInfo(
             name="TableStyleMedium9",
             showFirstColumn=False,
@@ -306,108 +310,71 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
             print("No data to write to Excel.")
             return
 
-        def pdf_title_from_url(url: str) -> str:
-            try:
-                from urllib.parse import urlsplit, unquote
-
-                path = urlsplit(str(url)).path
-                name = path.rsplit('/', 1)[-1] if path else str(url)
-                name = unquote(name)
-                if name.lower().endswith('.pdf'):
-                    name = name[:-4]
-                name = name.replace('_', ' ').replace('-', ' ').strip()
-                return ' '.join(name.split()) if name else str(url)
-            except Exception:
-                return str(url)
-
-        columns = [
-            "pdf_title",
-            "pdf_uri",
-            "fingerprint",
-            "domain_name",
-            "violations",
-            "failed_checks",
-            "tagged",
-            "pdf_text_type",
-            "title_set",
-            "language_set",
-            "page_count",
-            "has_form",
-            "approved_pdf_exporter",
-            "link_count",
-            "sample_parent_uri",
-        ]
-        worksheet.append(columns)
-
-        # Build an aggregation by pdf_uri
+        # One row per PDF URL, but keep the exact same columns/styles as Scanned PDFs.
+        # Choose a representative row (prefer high priority; tie-break by violations).
         by_pdf = {}
         for item in data:
-            item_list = list(item)
-            # Skip if parent_uri is a node link
-            if check_for_node(item_list[1]):
-                continue
+            try:
+                parent_uri = getattr(item, "parent_uri", None)
+                if parent_uri and check_for_node(str(parent_uri)):
+                    continue
+            except Exception:
+                pass
+
             pdf_uri = getattr(item, "pdf_uri", None)
-            parent_uri = getattr(item, "parent_uri", None)
             if not pdf_uri:
                 continue
 
-            if pdf_uri not in by_pdf:
-                by_pdf[pdf_uri] = {
-                    "item": item,
-                    "parents": set(),
-                }
-            if parent_uri:
-                by_pdf[pdf_uri]["parents"].add(str(parent_uri).split(" ")[0])
+            current = by_pdf.get(pdf_uri)
+            if current is None:
+                by_pdf[pdf_uri] = item
+                continue
 
-        for pdf_uri, agg in by_pdf.items():
-            item = agg["item"]
-            parents = sorted(agg["parents"]) if agg["parents"] else []
-            sample_parent = parents[0] if parents else ""
-            file_hash = getattr(item, "file_hash", "")
-            fingerprint = (file_hash or "")[0:6]
+            try:
+                current_hp = is_high_priority(current)
+                item_hp = is_high_priority(item)
+                if item_hp and not current_hp:
+                    by_pdf[pdf_uri] = item
+                    continue
+                if item_hp == current_hp:
+                    if int(getattr(item, "violations", 0) or 0) > int(getattr(current, "violations", 0) or 0):
+                        by_pdf[pdf_uri] = item
+            except Exception:
+                # If anything goes wrong, keep first-seen.
+                pass
 
-            row = [
-                pdf_title_from_url(pdf_uri),
-                f'=HYPERLINK("{pdf_uri}", "{pdf_uri}")',
-                fingerprint,
-                getattr(item, "domain_name", ""),
-                getattr(item, "violations", ""),
-                getattr(item, "failed_checks", ""),
-                "Yes" if getattr(item, "tagged", 0) == 1 else "No",
-                getattr(item, "pdf_text_type", ""),
-                getattr(item, "title_set", ""),
-                getattr(item, "language_set", ""),
-                getattr(item, "page_count", ""),
-                "Yes" if getattr(item, "has_form", 0) == 1 else "No",
-                "Yes" if getattr(item, "approved_pdf_exporter", 0) == 1 else "No",
-                len(parents),
-                f'=HYPERLINK("{sample_parent}", "{sample_parent}")' if sample_parent else "",
-            ]
-            worksheet.append(row)
+        unique_items = sorted(by_pdf.values(), key=lambda r: str(getattr(r, "pdf_uri", "") or ""))
+        add_data_to_scanned_pdfs(unique_items, worksheet, table_name="UniquePdfTable")
 
-        # Make hyperlink columns appear as hyperlinks (blue + underline)
-        max_row = worksheet.max_row
-        # pdf_uri is now column B
-        for row in worksheet.iter_rows(min_row=2, min_col=2, max_col=2, max_row=max_row):
-            for cell in row:
-                cell.font = Font(color='0563C1', underline='single')
-        for row in worksheet.iter_rows(min_row=2, min_col=len(columns), max_col=len(columns), max_row=max_row):
-            for cell in row:
-                if cell.value:
-                    cell.font = Font(color='0563C1', underline='single')
+    def add_data_grouped_by_pdf_url(data, worksheet):
+        if not data:
+            print("No data to write to Excel.")
+            return
 
-        # Convert the data into a formatted Table
-        table_range = f"A1:{chr(64 + len(columns))}{max_row}"
-        data_table = Table(displayName="UniquePdfTable", ref=table_range)
-        style = TableStyleInfo(
-            name="TableStyleMedium9",
-            showFirstColumn=False,
-            showLastColumn=False,
-            showRowStripes=True,
-            showColumnStripes=True
-        )
-        data_table.tableStyleInfo = style
-        worksheet.add_table(data_table)
+        # Same rows/columns as Scanned PDFs, but sorted so repeated PDFs are adjacent.
+        def _key(item):
+            pdf_uri = str(getattr(item, "pdf_uri", "") or "")
+            parent_uri = str(getattr(item, "parent_uri", "") or "")
+            parent_uri = parent_uri.split(" ")[0]
+            return (pdf_uri, parent_uri)
+
+        sorted_items = sorted(data, key=_key)
+        add_data_to_scanned_pdfs(sorted_items, worksheet, table_name="GroupedByPdfTable")
+
+    def add_data_grouped_by_parent_url(data, worksheet):
+        if not data:
+            print("No data to write to Excel.")
+            return
+
+        # Same rows/columns as Scanned PDFs, but sorted so pages/sections are adjacent.
+        def _key(item):
+            parent_uri = str(getattr(item, "parent_uri", "") or "")
+            parent_uri = parent_uri.split(" ")[0]
+            pdf_uri = str(getattr(item, "pdf_uri", "") or "")
+            return (parent_uri, pdf_uri)
+
+        sorted_items = sorted(data, key=_key)
+        add_data_to_scanned_pdfs(sorted_items, worksheet, table_name="GroupedByParentTable")
 
     def add_instructions(worksheet):
         cell = worksheet.cell(row=1, column=1)
@@ -417,6 +384,8 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
             "2) Cal State LA will provide access to PDF remediation tools for all employees.\n"
             "3) Please update the Priority column if a PDF meets the requirements for low priority. Only focus on RED highlights.\n"
             "4) Pay Attention to the 'fingerprint' column. This is the unique identifier for each PDF. There may be duplicates on your domain.\n"
+            "   Tip: If the same PDF appears on many pages (header/footer navigation), use the 'Unique PDFs' sheet to view it once.\n"
+            "   To view occurrences grouped together, use 'Grouped by PDF URL' (by file) or 'Grouped by Parent URL' (by page/section).\n"
             "5) If you need assistance with PDF remediation, please contact:\n"
             "   Email: accessibility@calstatela.edu | Phone: 323-343-6170 (ITS Help Desk)\n"
             "6) These scans only look at files hosted on drupal or box, if you feel files are missing please let us know and we can run a new scan.\n"
@@ -434,6 +403,10 @@ def write_data_to_excel(data, failure_data, file_name="output.xlsx"):
 
     # 1b) Populate the "Unique PDFs" sheet
     add_data_to_unique_pdfs(data, unique_pdfs_ws)
+
+    # 1c) Optional grouped summary views
+    add_data_grouped_by_pdf_url(data, grouped_by_pdf_ws)
+    add_data_grouped_by_parent_url(data, grouped_by_parent_ws)
 
     # 2) Create the "Failure" sheet
     add_data_to_failure(failure_data, failure_ws)
