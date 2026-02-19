@@ -29,11 +29,12 @@ echo "Using Python: $PYTHON_CMD"
 
 # Step 0: Setup Database
 echo "============================================================"
-echo "STEP 0: Setup Database and Load Test Data"
+echo "STEP 0: Setup/Verify Database (Non-Destructive)"
 echo "============================================================"
-echo "Command: $PYTHON_CMD scripts/setup_test_environment.py"
+echo "Command: $PYTHON_CMD scripts/setup_test_environment.py --no-reset"
+echo "(This will NOT delete drupal_pdfs.db; use scripts/fresh_start.sh for a clean reset.)"
 echo ""
-"$PYTHON_CMD" scripts/setup_test_environment.py
+"$PYTHON_CMD" scripts/setup_test_environment.py --no-reset
 echo ""
 read -p "✓ Step 0 complete. Press Enter to continue to Step 1..."
 echo ""

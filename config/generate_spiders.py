@@ -15,6 +15,7 @@ from src.data_management.data_import import get_all_sites_domain_names
 # Spider template
 spider_template = """# Generated spider
 import scrapy
+import re
 from datetime import datetime
 import os
 from urllib.parse import urlparse
@@ -47,10 +48,42 @@ class {class_name}(scrapy.Spider):
         from scrapy.signalmanager import dispatcher
         dispatcher.connect(self.spider_closed, signal=signals.spider_closed)
 
+    def start_requests(self):
+        \"\"\"Tries sitemap.xml first to seed all pages; also queues start_urls as fallback.\"\"\"
+        domain = self.allowed_domains[0]
+        yield scrapy.Request(
+            f"https://{{domain}}/sitemap.xml",
+            callback=self._parse_sitemap,
+            errback=self._sitemap_error,
+            dont_filter=True,
+        )
+        for url in self.start_urls:
+            yield scrapy.Request(url, callback=self.parse, dont_filter=True)
+
+    def _parse_sitemap(self, response):
+        \"\"\"Seed requests from all <loc> entries in sitemap.xml.\"\"\"
+        locs = re.findall(r'<loc>(.*?)</loc>', response.text, re.DOTALL)
+        for url in locs:
+            url = url.strip()
+            if url:
+                yield scrapy.Request(url, callback=self.parse)
+
+    def _sitemap_error(self, failure):
+        \"\"\"Sitemap not available; start_urls already queued in start_requests.\"\"\"
+        self.logger.debug("sitemap.xml not accessible, relying on start_urls")
+
     def parse(self, response):
         \"\"\"
         Main parser that extracts PDF links and follows internal links.
         \"\"\"
+        # Capture PDFs served with application/pdf content type (e.g. ld.php downloads)
+        content_type = response.headers.get('Content-Type', b'').decode('utf-8', errors='ignore').lower()
+        if 'application/pdf' in content_type:
+            referring_page = response.meta.get('referrer', response.url)
+            self.pdf_links.append((response.url, referring_page))
+            self.logger.info('Found PDF (Content-Type): %s', response.url)
+            return
+
         def is_http_url(url: str) -> bool:
             try:
                 parsed = urlparse(url)
@@ -94,7 +127,7 @@ class {class_name}(scrapy.Spider):
             
             # Follow internal links (optionally scoped)
             elif is_internal(absolute_url) and is_in_scope(absolute_url):
-                yield response.follow(absolute_url, callback=self.parse)
+                yield response.follow(absolute_url, callback=self.parse, meta={{'referrer': response.url}})
 
     def parse_box(self, response):
         \"\"\"
@@ -138,12 +171,19 @@ class {class_name}(scrapy.Spider):
 
 
 def generate_spiders():
-    """Generate spider files for all domains in the database."""
+    """Generate spider files for all domains in the database (or config.DOMAINS as fallback)."""
     
     output_dir = os.path.join(project_root, "crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders")
     os.makedirs(output_dir, exist_ok=True)
     
-    all_sites = get_all_sites_domain_names()
+    try:
+        all_sites = get_all_sites_domain_names()
+        if not all_sites:
+            raise ValueError("No sites returned from database")
+    except Exception as e:
+        print(f"  ⚠️  Could not load sites from database ({e}), falling back to config.DOMAINS")
+        import config as _config
+        all_sites = list(_config.DOMAINS)
     
     print(f"Generating spiders for {len(all_sites)} domains...")
     

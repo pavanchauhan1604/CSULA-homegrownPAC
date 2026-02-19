@@ -1,3 +1,5 @@
+import itertools
+import concurrent.futures
 import json
 import xml.etree.ElementTree as ET
 import chardet
@@ -157,7 +159,16 @@ def image_over_text(page):
 
 
 def check_status(document_location):
-    pages = list(high_level.extract_pages(document_location))
+    def _extract():
+        return list(itertools.islice(high_level.extract_pages(document_location), 10))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_extract)
+        try:
+            return future.result(timeout=30)
+        except concurrent.futures.TimeoutError:
+            print(f"Warning: pdfminer timed out on {document_location}, treating as no-text")
+            return []
 
     to_return = []
     for page in pages:
@@ -467,7 +478,10 @@ def pdf_check(location):
             alt_tag_count = check_for_alt_tags(Pikepdf)
         else:
             alt_tag_count = []
-        pdf_text_type = pdf_status(location)
+        try:
+            pdf_text_type = pdf_status(location)
+        except Exception:
+            pdf_text_type = "Unknown"
 
         obj = {
             "tagged": bool(tagged),

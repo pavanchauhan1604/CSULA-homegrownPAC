@@ -201,33 +201,75 @@ EXCEL_REPORT_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
 EXCEL_REPORT_NAME_FORMAT = "{domain_name}-{timestamp}.xlsx"
 
 # =============================================================================
-# TEST/DEVELOPMENT SETTINGS
+# SCAN DOMAIN LIST
 # =============================================================================
 
-# Test domains (for initial testing with a subset of domains)
-# Note: Use underscore (_) instead of slash (/) for URL paths
-# TEST_DOMAINS = [
-#     "www.calstatela.edu_accessibility",
-#     "www.calstatela.edu_publicsafety_campus-safety-report",
-#     "www.calstatela.edu_student-life_campus-services",
-#     "www.calstatela.edu_academic-affairs",
-#     "www.calstatela.edu_admissions",
-#     "www.calstatela.edu_financial-aid",
-#     "www.calstatela.edu_library",
-#     "www.calstatela.edu_research",
-#     "www.calstatela.edu_student-affairs",
-#     "www.calstatela.edu_faculty-staff",
-#     "www.calstatela.edu_alumni",
-#     "www.calstatela.edu_events",
-#     "www.calstatela.edu_news",
-# ]
-TEST_DOMAINS = [
-    # Use underscore (_) instead of slash (/) for URL paths
-    "www.calstatela.edu_ecst",
+# Domains/paths to scan.
+# Note: Use underscore (_) instead of slash (/) for URL paths.
+DOMAINS = [
+    # --- Previously scanned (commented out) ---
+    # "www.calstatela.edu_academicsenate",
+    # "www.calstatela.edu_al",
+    # "www.calstatela.edu_business",
+    # "www.calstatela.edu_coe",
+    # "www.calstatela.edu_ecst",
+    # "www.calstatela.edu_hhs",
+    # "www.calstatela.edu_library",
+    # "www.calstatela.edu_specialcollections",
+    # "www.calstatela.edu_futurelibrary",
+    # "libguides.calstatela.edu",
+    # "libcal.calstatela.edu",
+    # "libanswers.calstatela.edu",
+    # "directory.calstatela.edu",
+    # "digitalcollections.calstatela.edu",
+    # "www.calstatela.edu_nss",
+    # "www.calstatela.edu_osd",
+    # "www.calstatela.edu_admfin",
+    # "www.calstatela.edu_its",
+    # "www.calstatela.edu_advancement",
+    # "www.calstatela.edu_FinOpsPlanning",
+    # "www.calstatela.edu_edtech",
+    # "www.calstatela.edu_eop",
+    # "www.calstatela.edu_studenthealthcenter",
+    # --- New unique domains ---
+    "www.calstatela.edu_admissions",
+    "www.calstatela.edu_abacc",
+    "www.calstatela.edu_budget",
+    "www.calstatela.edu_careercenter",
+    "www.calstatela.edu_cetl",
+    "www.calstatela.edu_page",
+    "www.calstatela.edu_strategic-communications",
+    "www.calstatela.edu_academic_pas",
+    "www.calstatela.edu_publicsafety",
+    "discover.calstatela.edu",
+    "www.calstatela.edu_dtla",
+    "www.calstatela.edu_emeriti",
+    "www.calstatela.edu_academic_emt",
+    "www.calstatela.edu_financialaid",
+    "www.calstatela.edu_graduatestudies",
+    "www.calstatela.edu_honorscollege",
+    "www.calstatela.edu_housing",
+    "www.calstatela.edu_hrm",
+    "www.calstatela.edu_immigration",
+    "www.calstatela.edu_InstitutionalEffectiveness",
+    "www.calstatela.edu_international",
+    "www.calstatela.edu_FacultyAffairs",
+    "www.calstatela.edu_orsca",
+    "www.calstatela.edu_president",
+    "www.calstatela.edu_provost",
+    "www.calstatela.edu_finance-onestop",
+    "www.calstatela.edu_parking",
+    "www.calstatela.edu_patbrowninstitute",
+    "www.calstatela.edu_uas",
+    "www.calstatela.edu_registrar",
 ]
 
-
-# Use test domains only (set to False for production)
+# Backwards-compatible aliases (older code may still import these).
+# NOTE: Some parts of the pipeline historically used the `USE_TEST_DOMAINS_ONLY`
+# switch to decide whether to scan from a hardcoded list vs. loading from CSV.
+# To avoid regressions, keep this enabled while still treating `DOMAINS` as the
+# canonical list.
+TEST_DOMAINS = DOMAINS
 USE_TEST_DOMAINS_ONLY = True
 
 # =============================================================================
@@ -253,7 +295,22 @@ def get_domain_folder_name(domain_name):
     Convert domain name to folder-safe format.
     Example: "www.calstatela.edu" -> "www-calstatela-edu"
     """
-    return domain_name.replace(".", "-")
+    name = normalize_domain_key(domain_name)
+    return name.replace(".", "-")
+
+
+def normalize_domain_key(domain_name: str) -> str:
+    """Normalize a domain key for consistent folder/report naming."""
+    if domain_name is None:
+        return ""
+
+    name = str(domain_name).strip()
+    if "://" in name:
+        name = name.split("://", 1)[1]
+    name = name.strip("/")
+    if name.lower().startswith("www."):
+        name = name[4:]
+    return name
 
 
 def get_site_output_path(domain_name):
@@ -266,8 +323,26 @@ def get_site_output_path(domain_name):
     Returns:
         Path: Path object for the domain's output directory
     """
-    folder_name = get_domain_folder_name(domain_name)
-    return PDF_SITES_FOLDER / folder_name
+    normalized = normalize_domain_key(domain_name)
+
+    # Prefer an existing directory if one already exists under either naming.
+    candidates = []
+    if normalized:
+        candidates.append(PDF_SITES_FOLDER / get_domain_folder_name(normalized))
+
+    # Legacy naming: sometimes includes leading "www.".
+    if normalized and not normalized.lower().startswith("www."):
+        legacy_with_www = f"www.{normalized}"
+        candidates.append(PDF_SITES_FOLDER / legacy_with_www.replace(".", "-"))
+
+    for path in candidates:
+        if path.exists() and path.is_dir():
+            return path
+
+    # Default to normalized folder naming.
+    if not normalized:
+        normalized = str(domain_name).strip()
+    return PDF_SITES_FOLDER / get_domain_folder_name(normalized)
 
 
 def get_excel_report_path(domain_name, *, timestamp=None, prefer_latest=True):
@@ -382,9 +457,7 @@ def print_config():
     print(f"PDF Sites Folder: {PDF_SITES_FOLDER}")
     print(f"Output Directory: {OUTPUT_DIR}")
     print(f"Temp Directory: {TEMP_DIR}")
-    print(f"Test Mode: {USE_TEST_DOMAINS_ONLY}")
-    if USE_TEST_DOMAINS_ONLY:
-        print(f"Test Domains: {', '.join(TEST_DOMAINS)}")
+    print(f"Domains: {', '.join(DOMAINS)}")
     print("=" * 70)
 
 

@@ -361,20 +361,21 @@ def populate_database_from_csv():
                 security_group = row[0]
                 employee_id = row[2]
                 
-                # Get site ID
-                site_result = cursor.execute(
+                # Assign user to ALL sites that match this security group.
+                # (Multiple domains can share one security group, especially in simplified setups.)
+                site_rows = cursor.execute(
                     "SELECT id FROM drupal_site WHERE security_group_name = ?",
                     (security_group,)
-                ).fetchone()
-                
-                if site_result:
-                    site_id = site_result[0]
-                    cursor.execute(
-                        "INSERT OR IGNORE INTO site_assignment (site_id, user_id) VALUES (?, ?)",
-                        (site_id, employee_id)
-                    )
-                    if cursor.rowcount > 0:
-                        assignments_added += 1
+                ).fetchall()
+
+                if site_rows:
+                    for (site_id,) in site_rows:
+                        cursor.execute(
+                            "INSERT OR IGNORE INTO site_assignment (site_id, user_id) VALUES (?, ?)",
+                            (site_id, employee_id)
+                        )
+                        if cursor.rowcount > 0:
+                            assignments_added += 1
     
     conn.commit()
     conn.close()
@@ -441,6 +442,14 @@ def main():
     parser = argparse.ArgumentParser(description="Setup Test Environment for CSULA PDF Checker")
     parser.add_argument("--force", action="store_true", help="Skip confirmation prompt")
     parser.add_argument(
+        "--no-reset",
+        action="store_true",
+        help=(
+            "Do not delete/clear the existing database file. Useful for resuming runs or "
+            "ensuring tables exist without losing progress."
+        ),
+    )
+    parser.add_argument(
         "--generate-csvs",
         action="store_true",
         help=(
@@ -472,8 +481,13 @@ def main():
             return
     
     try:
-        # Ensure we start from a clean slate
-        reset_database_file()
+        # By default this script historically reset the DB for deterministic test runs.
+        # For production/resume workflows, use --no-reset.
+        if args.no_reset:
+            print("ℹ️  --no-reset enabled: keeping existing database (if present).")
+        else:
+            # Ensure we start from a clean slate
+            reset_database_file()
 
         # Step 1: Create database tables
         create_database_tables()

@@ -506,6 +506,14 @@ WHERE pdf_uri = 'https://problematic-url.pdf';
 "
 
 # Resume workflow
+
+If the workflow was interrupted (e.g., laptop shutdown), you can rerun the
+workflow script.
+
+Important: the workflow setup step resets `drupal_pdfs.db`. The scripts are
+configured to skip database rebuild when an existing DB is found, so rerunning
+will resume using what was already crawled/analyzed.
+
 ./scripts/run_workflow.sh
 ```
 

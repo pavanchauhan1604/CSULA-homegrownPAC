@@ -36,6 +36,12 @@ else
 fi
 sleep 2
 
+# Regenerate spider files from database (must happen before DB is deleted)
+echo "🕷️  Regenerating spider files..."
+"$PYTHON_CMD" config/generate_spiders.py || {
+    echo "   ⚠️  Spider generation had errors (see above). Continuing fresh start..."
+}
+
 # Backup existing database (just in case)
 if [ -f "drupal_pdfs.db" ]; then
     echo "💾 Backing up existing database..."
@@ -166,7 +172,8 @@ echo ""
 echo "📋 What was cleaned:"
 echo "   • Database deleted (backup saved)"
 echo "   • All output files removed"
-echo "   • Temp files cleared"
+echo "   • Temp files cleared (including completed_spiders.txt)"
+echo "   • Spider files regenerated from database"
 echo "   • Email template recreated"
 echo ""
 echo "📋 Current configuration (from config.py):"
