@@ -46,6 +46,11 @@ CSULA-homegrownPAC/
 │       ├── __init__.py
 │       └── tools.py              # Utility tools
 │
+├── 📁 scripts/                    # Automation scripts
+│   ├── send_emails.py            # Email sending (Outlook - Windows)
+│   ├── teams_upload.py           # Copy Excel reports to Teams via OneDrive sync
+│   └── historical_analysis.py   # Per-domain HTML trend dashboards from timestamped reports
+│
 ├── 📁 crawlers/                   # Web scraping
 │   ├── README.md
 │   └── 📁 sf_state_pdf_scan/     # Scrapy project
@@ -139,6 +144,8 @@ CSULA-homegrownPAC/
 | Import data | `src/data_management/data_import.py` |
 | Generate reports | `src/reporting/html_report.py` |
 | Send emails | `src/communication/pdf_email.py` |
+| Upload reports to Teams | `scripts/teams_upload.py` |
+| Historical trend dashboards | `scripts/historical_analysis.py` |
 | Web scraping | `crawlers/sf_state_pdf_scan/` |
 | SQL queries | `sql/*.sql` |
 | View outputs | `output/reports/` |

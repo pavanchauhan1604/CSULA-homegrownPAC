@@ -273,6 +273,25 @@ TEST_DOMAINS = DOMAINS
 USE_TEST_DOMAINS_ONLY = True
 
 # =============================================================================
+# MICROSOFT TEAMS / ONEDRIVE SETTINGS
+# =============================================================================
+# Both scripts/teams_upload.py and scripts/historical_analysis.py use the
+# OneDrive-synced Teams folder directly — no API or authentication required.
+#
+# How to find TEAMS_ONEDRIVE_PATH:
+#   Your Teams channel Files tab is synced to your local machine via OneDrive.
+#   Open File Explorer → look under "OneDrive - Cal State LA" for the folder
+#   named after your team (e.g. "PDF Accessibility Checker (PAC) - General").
+
+# Root folder synced from your Teams channel Files tab
+TEAMS_ONEDRIVE_PATH = r"C:\Users\pchauha4\OneDrive - Cal State LA\PDF Accessibility Checker (PAC) - General"
+
+# SharePoint base URL for direct Excel file links in historical_analysis.py dashboards.
+# Format: https://<tenant>.sharepoint.com/:x:/r/sites/<SiteName>/Shared%20Documents/<FolderPath>
+# Leave blank to disable hyperlinks on timestamps.
+TEAMS_SHAREPOINT_FILES_URL = "https://csula.sharepoint.com/:x:/r/sites/PDFAccessibilityCheckerPAC/Shared%20Documents/General"
+
+# =============================================================================
 # LOGGING SETTINGS
 # =============================================================================
 

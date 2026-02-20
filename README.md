@@ -32,7 +32,9 @@ CSULA-homegrownPAC/
 │   └── utilities/               # Helper utilities
 │       └── tools.py             # Utility functions
 ├── scripts/                     # Automation scripts
-│   └── send_emails.py           # Email sending script (Outlook - Windows)
+│   ├── send_emails.py           # Email sending script (Outlook - Windows)
+│   ├── teams_upload.py          # Copy Excel reports to Teams via OneDrive sync
+│   └── historical_analysis.py  # Per-domain HTML trend dashboards
 ├── crawlers/                    # Web scraping
 │   └── sf_state_pdf_scan/       # Scrapy project
 │       ├── run_all_spiders.py   # Spider orchestrator
@@ -91,6 +93,27 @@ python3 scripts/send_emails.py
 python src/reporting/html_report.py
 ```
 
+### 6. Upload Reports to Teams (OneDrive)
+```bash
+# Copies the latest Excel report for each domain into the synced Teams channel folder
+python scripts/teams_upload.py
+
+# Upload specific domains only
+python scripts/teams_upload.py --domains www.calstatela.edu_admissions
+```
+
+### 7. Generate Historical Analysis Dashboards
+```bash
+# Generate per-domain HTML trend dashboards from all timestamped reports in OneDrive
+python scripts/historical_analysis.py
+
+# Save to local output/reports/ instead of OneDrive
+python scripts/historical_analysis.py --no-upload
+
+# Specific domains only
+python scripts/historical_analysis.py --domains www.calstatela.edu_admissions
+```
+
 ## Key Features
 
 - **Automated Web Crawling**: Scrapy spiders crawl university domains to find PDFs
@@ -103,6 +126,7 @@ python src/reporting/html_report.py
 - **Email Automation**: Windows Outlook desktop automation (no SMTP)
 - **404 Tracking**: Monitors broken links and removed PDFs
 - **Duplicate Detection**: SHA-256 hashing prevents redundant testing
+- **Teams/OneDrive Integration**: Copies Excel reports into the synced Teams channel folder; generates per-domain HTML trend dashboards comparing all historical timestamped scans
 
 ## Requirements
 
@@ -120,6 +144,17 @@ python -m pip install -r requirements.txt
 ### Windows
 
 For a complete Windows setup (PowerShell + venv + VeraPDF + Outlook Desktop sending), see: `setup/WINDOWS_INSTALLATION_GUIDE.md`.
+
+### Teams / OneDrive Setup
+
+Set `TEAMS_ONEDRIVE_PATH` in `config.py` to the locally synced Teams channel folder (e.g. the folder that appears under OneDrive in File Explorer when you sync the channel). No Azure registration or API credentials are required.
+
+```python
+# config.py
+TEAMS_ONEDRIVE_PATH = r"C:\Users\<you>\OneDrive - Cal State LA\PDF Accessibility Checker (PAC) - General"
+```
+
+Domain subfolders are created automatically on first upload.
 
 ## Compliance Target
 

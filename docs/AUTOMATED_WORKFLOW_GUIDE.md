@@ -64,6 +64,8 @@ git --version
 | `scripts/run_workflow.sh` | Main workflow - scan, analyze, generate reports | Regular PDF scanning |
 | `scripts/send_emails.py` | Generate HTML emails for distribution | After reports are generated |
 | `scripts/check_progress.sh` | Monitor crawling progress | During long-running scans |
+| `scripts/teams_upload.py` | Copy latest Excel reports to Teams via OneDrive sync | After reports are generated |
+| `scripts/historical_analysis.py` | Generate per-domain HTML trend dashboards from all historical scans | After multiple scan cycles |
 
 ---
 
@@ -279,6 +281,70 @@ MANUAL SENDING INSTRUCTIONS:
 
 ---
 
+#### Step 4: Upload Reports to Teams (OneDrive)
+
+```bash
+# Upload latest Excel report for every domain into the Teams channel folder
+python scripts/teams_upload.py
+
+# Upload specific domains only
+python scripts/teams_upload.py --domains www.calstatela.edu_admissions
+```
+
+**What this does:**
+- ✅ Locates the most-recent timestamped `.xlsx` for each domain in `output/scans/`
+- ✅ Copies it into the matching subfolder inside the locally-synced Teams channel folder (`TEAMS_ONEDRIVE_PATH` in `config.py`)
+- ✅ Creates the domain subfolder automatically if it does not yet exist
+- ✅ OneDrive sync handles propagation to the shared Teams channel
+
+**Prerequisites:**
+- Teams channel must be synced to OneDrive (right-click the channel → *Sync*)
+- `TEAMS_ONEDRIVE_PATH` in `config.py` must point to the local sync folder
+
+**Expected Output:**
+```
+[teams_upload] Uploading reports to: C:\Users\pchauha4\OneDrive - Cal State LA\PDF Accessibility Checker (PAC) - General
+[teams_upload]   calstatela-edu_admissions  -> copied  www.calstatela.edu_admissions-2025-11-03_14-00-00.xlsx
+[teams_upload]   calstatela-edu_library     -> copied  www.calstatela.edu_library-2025-11-03_14-01-05.xlsx
+[teams_upload] Done. 2 domain(s) processed.
+```
+
+**Time:** ~5 seconds
+
+---
+
+#### Step 5: Generate Historical Analysis Dashboards
+
+```bash
+# Generate per-domain HTML trend dashboards from all timestamped reports in OneDrive
+python scripts/historical_analysis.py
+
+# Save dashboards to local output/reports/<domain>/ instead of OneDrive
+python scripts/historical_analysis.py --no-upload
+
+# Specific domains only
+python scripts/historical_analysis.py --domains www.calstatela.edu_admissions
+```
+
+**What this does:**
+- ✅ Reads every timestamped `.xlsx` file found in each domain’s OneDrive subfolder
+- ✅ Extracts key metrics per scan: total PDFs, unique PDFs, compliance %, violation counts, top error types
+- ✅ Generates a self-contained `historical_analysis_{timestamp}.html` with Chart.js trend graphs
+- ✅ Saves the HTML back into the same domain subfolder (or `output/reports/<domain>/` with `--no-upload`)
+- ✅ Shows a table of all scans and a “Only one scan on record” message when charts aren’t yet meaningful
+
+**Expected Output:**
+```
+[historical_analysis] Reading reports from: C:\Users\pchauha4\OneDrive - Cal State LA\PDF Accessibility Checker (PAC) - General
+[historical_analysis]   calstatela-edu_admissions: 3 scan(s) found
+[historical_analysis]     -> saved historical_analysis_2025-11-03_14-10-00.html
+[historical_analysis] Done. 2 domain(s) processed.
+```
+
+**Time:** ~10 seconds
+
+---
+
 ## INDIVIDUAL SCRIPT USAGE
 
 ### Script 1: Fresh Start Only
@@ -365,6 +431,44 @@ python3 scripts/send_emails.py --no-browser
 
 # Generate for specific employee
 python3 scripts/send_emails.py --employee "12345678"
+```
+
+---
+
+### Script 5: Teams Upload Only
+
+**Use Case:** Upload the latest Excel reports to Teams after a scan without re-running the full workflow
+
+```bash
+python scripts/teams_upload.py
+```
+
+**Options:**
+```bash
+# Upload specific domains only
+python scripts/teams_upload.py --domains www.calstatela.edu_admissions www.calstatela.edu_library
+```
+
+---
+
+### Script 6: Historical Analysis Only
+
+**Use Case:** Regenerate trend dashboards after new reports have been uploaded
+
+```bash
+python scripts/historical_analysis.py
+```
+
+**Options:**
+```bash
+# Save HTML to local output/reports/ instead of OneDrive
+python scripts/historical_analysis.py --no-upload
+
+# Specific domains only
+python scripts/historical_analysis.py --domains www.calstatela.edu_admissions
+
+# Use a custom local folder as the report source
+python scripts/historical_analysis.py --source local --local-path "C:/Downloads/reports"
 ```
 
 ---
@@ -619,10 +723,14 @@ echo "PDF scan complete!" | mail -s "Scan Results" admin@calstatela.edu
 - [ ] Run `python3 scripts/send_emails.py`
 - [ ] Review email content in browser
 - [ ] Manually send emails via Outlook Web
+- [ ] Run `python scripts/teams_upload.py` to copy reports to Teams
+- [ ] Run `python scripts/historical_analysis.py` to update trend dashboards
 
 ### Post-Execution Checklist
 - [ ] Verify all domains processed
 - [ ] Check failure reports (if any)
+- [ ] Reports uploaded to Teams (`python scripts/teams_upload.py`)
+- [ ] Historical dashboards generated (`python scripts/historical_analysis.py`)
 - [ ] Archive old reports (optional)
 - [ ] Update domain configuration for next run
 - [ ] Document any issues encountered
@@ -641,6 +749,15 @@ cd /Users/pavan/Work/CSULA-homegrownPAC
 
 # Generate emails
 python3 scripts/send_emails.py
+
+# Upload reports to Teams (OneDrive)
+python scripts/teams_upload.py
+
+# Generate historical trend dashboards
+python scripts/historical_analysis.py
+
+# Historical dashboards - local output only (no upload)
+python scripts/historical_analysis.py --no-upload
 
 # View reports
 open output/scans/
