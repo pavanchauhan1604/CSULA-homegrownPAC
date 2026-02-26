@@ -54,45 +54,55 @@ function Install-ViaWinget {
 }
 
 # ---------------------------------------------------------------------------
-# 1. Python 3.11+
+# Helper: find the real python.exe by scanning known install locations,
+# ignoring the Windows Store stub (which lives under WindowsApps\)
 # ---------------------------------------------------------------------------
-$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
-$pythonOk = $false
-
-# The Windows Store installs a fake python.exe stub under WindowsApps\.
-# Treat it the same as "not found" so we install the real Python via winget.
-$isStoreStub = $pythonCmd -and ($pythonCmd.Source -like "*WindowsApps*")
-
-if ($pythonCmd -and -not $isStoreStub) {
-    $versionString = ""
-    try {
-        $versionString = (python --version 2>&1).ToString().Trim()
-    } catch {
-        $versionString = ""
+function Find-RealPython {
+    $candidates = @(
+        # winget / python.org per-user install (most common)
+        "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe",
+        # system-wide install
+        "$env:ProgramFiles\Python311\python.exe",
+        "$env:ProgramFiles\Python312\python.exe",
+        "$env:ProgramFiles\Python310\python.exe"
+    )
+    foreach ($p in $candidates) {
+        if (Test-Path $p) { return $p }
     }
-    # If the output still looks like a Store-stub error, treat as not found
-    if ($versionString -match "Microsoft Store|was not found|App execution") {
-        $isStoreStub = $true
-    }
+    # Fall back to PATH, but reject the Store stub
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source -notlike "*WindowsApps*") { return $cmd.Source }
+    return $null
 }
 
-if ($pythonCmd -and -not $isStoreStub) {
+# ---------------------------------------------------------------------------
+# 1. Python 3.11+
+# ---------------------------------------------------------------------------
+$pythonExe = Find-RealPython
+$pythonOk = $false
+
+if ($pythonExe) {
+    $versionString = ""
+    try { $versionString = (& $pythonExe --version 2>&1).ToString().Trim() } catch {}
     $versionMatch = $versionString -match 'Python (\d+)\.(\d+)'
     if ($versionMatch) {
         $major = [int]($Matches[1])
         $minor = [int]($Matches[2])
         if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 11)) {
-            Write-Host "[OK] Found $versionString" -ForegroundColor Green
+            Write-Host "[OK] Found $versionString ($pythonExe)" -ForegroundColor Green
             $pythonOk = $true
         } else {
             Write-Host "[WARN] Found $versionString but 3.11+ is required. Installing newer version..." -ForegroundColor Yellow
         }
     } else {
-        Write-Host "[OK] Found Python (version unreadable, continuing)" -ForegroundColor Green
+        Write-Host "[OK] Found Python at $pythonExe (version check inconclusive, continuing)" -ForegroundColor Green
         $pythonOk = $true
     }
-} elseif ($isStoreStub) {
-    Write-Host "[ ] Found Windows Store python stub - installing real Python 3.11..." -ForegroundColor Cyan
+} else {
+    Write-Host "[ ] Python 3.11+ not found (Windows Store stub ignored). Installing via winget..." -ForegroundColor Cyan
 }
 
 if (-not $pythonOk) {
@@ -102,15 +112,14 @@ if (-not $pythonOk) {
         Write-Host "        Install Python 3.11+ from https://www.python.org/ (check 'Add to PATH')." -ForegroundColor Red
         exit 1
     }
-    $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
-    $isStoreStub2 = $pythonCmd -and ($pythonCmd.Source -like "*WindowsApps*")
-    if (-not $pythonCmd -or $isStoreStub2) {
-        Write-Host "[ERROR] Python still not found in PATH after install." -ForegroundColor Red
-        Write-Host "        Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Red
-        exit 1
+    # After winget, search install locations directly (PATH may not yet be refreshed)
+    $pythonExe = Find-RealPython
+    if (-not $pythonExe) {
+        Write-Host "[INFO] Python installed. Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Yellow
+        exit 0
     }
-    $pyVer = try { (python --version 2>&1).ToString().Trim() } catch { "Python 3.11" }
-    Write-Host "[OK] Python installed: $pyVer" -ForegroundColor Green
+    $pyVer = try { (& $pythonExe --version 2>&1).ToString().Trim() } catch { "Python 3.11" }
+    Write-Host "[OK] Python installed: $pyVer ($pythonExe)" -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------------------
@@ -143,10 +152,9 @@ if (Test-Path ".venv") {
     Write-Host "[OK] .venv already exists - skipping creation." -ForegroundColor Green
 } else {
     Write-Host "[ ] Creating virtual environment in .venv ..." -ForegroundColor Cyan
-    # Use the explicit python path so we never accidentally invoke the Store stub
-    $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
-    if (-not $pythonExe -or $pythonExe -like "*WindowsApps*") {
-        Write-Host "[ERROR] Real Python not in PATH. Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Red
+    # Use the resolved real python path - never rely on PATH which may still have the Store stub first
+    if (-not $pythonExe) {
+        Write-Host "[ERROR] Real Python path unknown. Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Red
         exit 1
     }
     & $pythonExe -m venv .venv
