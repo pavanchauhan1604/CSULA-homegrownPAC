@@ -58,22 +58,23 @@ function Install-ViaWinget {
 # ignoring the Windows Store stub (which lives under WindowsApps\)
 # ---------------------------------------------------------------------------
 function Find-RealJava {
-    # Temurin winget install lands in Program Files\Eclipse Adoptium\
-    $adoptiumBase = "$env:ProgramFiles\Eclipse Adoptium"
-    if (Test-Path $adoptiumBase) {
-        $jdkBin = Get-ChildItem $adoptiumBase -Filter "jdk-21*" -Directory -ErrorAction SilentlyContinue |
-                  Select-Object -First 1
-        if (-not $jdkBin) {
-            # Accept any JDK version found as a fallback
-            $jdkBin = Get-ChildItem $adoptiumBase -Filter "jdk-*" -Directory -ErrorAction SilentlyContinue |
-                      Select-Object -First 1
-        }
-        if ($jdkBin) {
-            $candidate = Join-Path $jdkBin.FullName "bin\java.exe"
-            if (Test-Path $candidate) { return $candidate }
+    # Recursively search all Adoptium/Temurin install locations for java.exe
+    # This handles any version subfolder name (jdk-21.0.x+y-hotspot, etc.)
+    $searchRoots = @(
+        "$env:ProgramFiles\Eclipse Adoptium",
+        "${env:ProgramFiles(x86)}\Eclipse Adoptium",
+        "$env:ProgramFiles\Temurin",
+        "$env:ProgramFiles\Java"
+    )
+    foreach ($root in $searchRoots) {
+        if (Test-Path $root) {
+            $found = Get-ChildItem -Path $root -Recurse -Filter "java.exe" -ErrorAction SilentlyContinue |
+                     Where-Object { $_.DirectoryName -like "*\bin" } |
+                     Select-Object -First 1 -ExpandProperty FullName
+            if ($found) { return $found }
         }
     }
-    # Also check JAVA_HOME if already set
+    # Check JAVA_HOME if set
     if ($env:JAVA_HOME) {
         $candidate = Join-Path $env:JAVA_HOME "bin\java.exe"
         if (Test-Path $candidate) { return $candidate }
@@ -156,19 +157,35 @@ $javaExe = Find-RealJava
 if ($javaExe) {
     Write-Host "[OK] Java found: $javaExe" -ForegroundColor Green
 } else {
-    Write-Host "[ ] Java not found. Installing Eclipse Temurin 21..." -ForegroundColor Cyan
-    $installed = Install-ViaWinget -PackageId "EclipseAdoptium.Temurin.21.JDK" -FriendlyName "Java 21 (Temurin JDK)"
-    if (-not $installed) {
-        Write-Host "[WARN] Could not install Java automatically." -ForegroundColor Yellow
-        Write-Host "       Install Java 21 from https://adoptium.net/ then re-run setup.ps1" -ForegroundColor Yellow
-    } else {
-        # Scan install folder directly - don't rely on PATH being refreshed
-        $javaExe = Find-RealJava
-        if ($javaExe) {
-            Write-Host "[OK] Java installed: $javaExe" -ForegroundColor Green
+    # Show what folders exist under Program Files to help diagnose install path issues
+    $adoptiumDir = "$env:ProgramFiles\Eclipse Adoptium"
+    if (Test-Path $adoptiumDir) {
+        Write-Host "[DBG] Eclipse Adoptium folder found but java.exe not located inside it. Contents:" -ForegroundColor Yellow
+        Get-ChildItem $adoptiumDir -Recurse -Filter "java.exe" -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "       $($_.FullName)" -ForegroundColor Yellow }
+        Write-Host "       Attempting to use any java.exe found above..." -ForegroundColor Yellow
+        # Brute-force: any java.exe anywhere under Program Files\Eclipse Adoptium
+        $bruteFound = Get-ChildItem -Path $adoptiumDir -Recurse -Filter "java.exe" -ErrorAction SilentlyContinue |
+                      Select-Object -First 1 -ExpandProperty FullName
+        if ($bruteFound) {
+            $javaExe = $bruteFound
+            Write-Host "[OK] Java found via brute-force search: $javaExe" -ForegroundColor Green
         } else {
-            Write-Host "[WARN] Java installed but install folder not yet visible." -ForegroundColor Yellow
-            Write-Host "       Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Yellow
+            Write-Host "[WARN] Cannot locate java.exe. Re-run setup.ps1 or install Java 21 manually from https://adoptium.net/" -ForegroundColor Red
+        }
+    } else {
+        Write-Host "[ ] Java not found. Installing Eclipse Temurin 21..." -ForegroundColor Cyan
+        $installed = Install-ViaWinget -PackageId "EclipseAdoptium.Temurin.21.JDK" -FriendlyName "Java 21 (Temurin JDK)"
+        if (-not $installed) {
+            Write-Host "[WARN] Could not install Java automatically." -ForegroundColor Yellow
+            Write-Host "       Install Java 21 from https://adoptium.net/ then re-run setup.ps1" -ForegroundColor Yellow
+        } else {
+            $javaExe = Find-RealJava
+            if ($javaExe) {
+                Write-Host "[OK] Java installed: $javaExe" -ForegroundColor Green
+            } else {
+                Write-Host "[INFO] Java installed. Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Yellow
+            }
         }
     }
 }
