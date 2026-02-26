@@ -110,7 +110,9 @@ SCANS_OUTPUT_FORMAT = str(PDF_SITES_FOLDER / "{}")
 # =============================================================================
 
 # VeraPDF command (should be in PATH, or provide full path here)
-VERAPDF_COMMAND = r"C:\Users\pchauha4\veraPDF\verapdf.bat"
+# Default assumes standard installer location: %USERPROFILE%\veraPDF\verapdf.bat
+# setup.ps1 will auto-update this to the correct path for the current machine.
+VERAPDF_COMMAND = str(Path.home() / "veraPDF" / "verapdf.bat")
 
 # VeraPDF validation profile (ua1, ua2, etc.)
 VERAPDF_PROFILE = "ua1"
@@ -253,7 +255,8 @@ USE_TEST_DOMAINS_ONLY = True
 #   named after your team (e.g. "PDF Accessibility Checker (PAC) - General").
 
 # Root folder synced from your Teams channel Files tab
-TEAMS_ONEDRIVE_PATH = r"C:\Users\pchauha4\OneDrive - Cal State LA\PDF Accessibility Checker (PAC) - General"
+# setup.ps1 will auto-detect and update this to the correct path for the current machine.
+TEAMS_ONEDRIVE_PATH = str(Path.home() / "OneDrive - Cal State LA" / "PDF Accessibility Checker (PAC) - General")
 
 # SharePoint base URL for direct Excel file links in historical_analysis.py dashboards.
 # Format: https://<tenant>.sharepoint.com/:x:/r/sites/<SiteName>/Shared%20Documents/<FolderPath>
