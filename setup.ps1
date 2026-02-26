@@ -59,13 +59,24 @@ function Install-ViaWinget {
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 $pythonOk = $false
 
-if ($pythonCmd) {
+# The Windows Store installs a fake python.exe stub under WindowsApps\.
+# Treat it the same as "not found" so we install the real Python via winget.
+$isStoreStub = $pythonCmd -and ($pythonCmd.Source -like "*WindowsApps*")
+
+if ($pythonCmd -and -not $isStoreStub) {
     $versionString = ""
     try {
         $versionString = (python --version 2>&1).ToString().Trim()
     } catch {
         $versionString = ""
     }
+    # If the output still looks like a Store-stub error, treat as not found
+    if ($versionString -match "Microsoft Store|was not found|App execution") {
+        $isStoreStub = $true
+    }
+}
+
+if ($pythonCmd -and -not $isStoreStub) {
     $versionMatch = $versionString -match 'Python (\d+)\.(\d+)'
     if ($versionMatch) {
         $major = [int]($Matches[1])
@@ -80,6 +91,8 @@ if ($pythonCmd) {
         Write-Host "[OK] Found Python (version unreadable, continuing)" -ForegroundColor Green
         $pythonOk = $true
     }
+} elseif ($isStoreStub) {
+    Write-Host "[ ] Found Windows Store python stub - installing real Python 3.11..." -ForegroundColor Cyan
 }
 
 if (-not $pythonOk) {
@@ -90,7 +103,8 @@ if (-not $pythonOk) {
         exit 1
     }
     $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $pythonCmd) {
+    $isStoreStub2 = $pythonCmd -and ($pythonCmd.Source -like "*WindowsApps*")
+    if (-not $pythonCmd -or $isStoreStub2) {
         Write-Host "[ERROR] Python still not found in PATH after install." -ForegroundColor Red
         Write-Host "        Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Red
         exit 1
@@ -129,7 +143,13 @@ if (Test-Path ".venv") {
     Write-Host "[OK] .venv already exists - skipping creation." -ForegroundColor Green
 } else {
     Write-Host "[ ] Creating virtual environment in .venv ..." -ForegroundColor Cyan
-    python -m venv .venv
+    # Use the explicit python path so we never accidentally invoke the Store stub
+    $pythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if (-not $pythonExe -or $pythonExe -like "*WindowsApps*") {
+        Write-Host "[ERROR] Real Python not in PATH. Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Red
+        exit 1
+    }
+    & $pythonExe -m venv .venv
     Write-Host "[OK] .venv created." -ForegroundColor Green
 }
 
