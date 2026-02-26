@@ -84,7 +84,7 @@ function Find-RealJava {
     return $null
 }
 
-
+function Find-RealPython {
     $candidates = @(
         # winget / python.org per-user install (most common)
         "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
