@@ -236,8 +236,15 @@ foreach ($dir in $dirs) {
 # ---------------------------------------------------------------------------
 # 6. VeraPDF - install if missing, then update config.py
 # ---------------------------------------------------------------------------
-$veraDefaultDir = "$env:USERPROFILE\veraPDF"
+# %LOCALAPPDATA%\Programs is the standard per-user install location on Windows
+# and is always writable without elevation, unlike the user profile root.
+$veraDefaultDir = "$env:LOCALAPPDATA\Programs\veraPDF"
 $veraBat = "$veraDefaultDir\verapdf.bat"
+# Also check the legacy install path so existing machines aren't broken
+if (-not (Test-Path $veraBat)) {
+    $legacyBat = "$env:USERPROFILE\veraPDF\verapdf.bat"
+    if (Test-Path $legacyBat) { $veraBat = $legacyBat; $veraDefaultDir = "$env:USERPROFILE\veraPDF" }
+}
 $veraConfigured = $false
 
 if (Test-Path $veraBat) {
@@ -266,19 +273,16 @@ if (Test-Path $veraBat) {
 
             if ($installerJar) {
                 Write-Host "[ ] Running VeraPDF silent install to $veraDefaultDir ..." -ForegroundColor Cyan
-                # IzPack requires the target directory to exist before install
-                if (-not (Test-Path $veraDefaultDir)) {
-                    New-Item -Path $veraDefaultDir -ItemType Directory -Force | Out-Null
-                }
-                # IzPack 5 supports -unattended and -installpath for headless install
-                $proc = Start-Process -FilePath $javaExe `
-                    -ArgumentList "-jar", "`"$installerJar`"", "-unattended", "-installpath", "`"$veraDefaultDir`"" `
-                    -Wait -PassThru -NoNewWindow
-                if ($proc.ExitCode -eq 0 -and (Test-Path $veraBat)) {
+                # Pre-create the target directory — IzPack needs it to exist
+                New-Item -Path $veraDefaultDir -ItemType Directory -Force | Out-Null
+                # Run directly with & (same session / same user context) so IzPack
+                # inherits the correct permissions, avoiding 'Access is denied'.
+                & $javaExe -jar "$installerJar" -unattended -installpath "$veraDefaultDir"
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $veraBat)) {
                     Write-Host "[OK] VeraPDF installed at: $veraBat" -ForegroundColor Green
                     $veraConfigured = $true
                 } else {
-                    Write-Host "[WARN] Silent install finished (exit $($proc.ExitCode)) but verapdf.bat not found at:" -ForegroundColor Yellow
+                    Write-Host "[WARN] Silent install finished (exit $LASTEXITCODE) but verapdf.bat not found at:" -ForegroundColor Yellow
                     Write-Host "       $veraBat" -ForegroundColor Gray
                     Write-Host "       If veraPDF ended up in a different folder, update VERAPDF_COMMAND in config.py manually." -ForegroundColor Gray
                 }
