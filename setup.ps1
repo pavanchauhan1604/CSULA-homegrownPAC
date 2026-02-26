@@ -5,13 +5,16 @@
 #   .\setup.ps1
 #
 # What this does:
-#   1. Verifies Python 3.11+
-#   2. Creates a .venv virtual environment in the project directory
-#   3. Installs all dependencies from requirements.txt
-#   4. Creates any missing output/temp directories
-#   5. Installs VeraPDF if not already present and updates config.py
-#   6. Auto-detects Teams OneDrive path and updates config.py
-#   7. Prints any remaining manual configuration steps
+#   1. Installs Python 3.11 via winget if not present
+#   2. Installs Java 21 (Temurin) via winget if not present
+#   3. Creates a .venv virtual environment in the project directory
+#   4. Installs all dependencies from requirements.txt
+#   5. Creates any missing output/temp directories
+#   6. Installs VeraPDF if not already present and updates config.py
+#   7. Auto-detects Teams OneDrive path and updates config.py
+#   8. Prints any remaining manual configuration steps
+#
+# Prerequisites: Windows 10 1709+ or Windows 11 (winget is built in)
 # =============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -23,33 +26,98 @@ Write-Host "=====================================================" -ForegroundCo
 Write-Host ""
 
 # ---------------------------------------------------------------------------
-# 1. Check Python
+# Helper: refresh PATH in the current session after a winget install
+# ---------------------------------------------------------------------------
+function Update-SessionPath {
+    $machinePath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
+    $userPath    = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    $env:PATH    = "$machinePath;$userPath"
+}
+
+# ---------------------------------------------------------------------------
+# Helper: install a package via winget
+# ---------------------------------------------------------------------------
+function Install-ViaWinget {
+    param(
+        [string]$PackageId,
+        [string]$FriendlyName
+    )
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $winget) {
+        Write-Host "[WARN] winget not found. Install $FriendlyName manually." -ForegroundColor Yellow
+        return $false
+    }
+    Write-Host "[ ] Installing $FriendlyName via winget..." -ForegroundColor Cyan
+    winget install --id $PackageId --exact --silent --accept-package-agreements --accept-source-agreements
+    Update-SessionPath
+    return $true
+}
+
+# ---------------------------------------------------------------------------
+# 1. Python 3.11+
 # ---------------------------------------------------------------------------
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
-if (-not $pythonCmd) {
-    Write-Host "[ERROR] Python not found in PATH." -ForegroundColor Red
-    Write-Host "        Install Python 3.11+ from https://www.python.org/ and make sure" -ForegroundColor Red
-    Write-Host "        'Add python.exe to PATH' is checked during installation." -ForegroundColor Red
-    exit 1
+$pythonOk = $false
+
+if ($pythonCmd) {
+    $versionString = (python --version 2>&1).ToString().Trim()
+    $versionMatch = $versionString -match 'Python (\d+)\.(\d+)'
+    if ($versionMatch) {
+        $major = [int]($Matches[1])
+        $minor = [int]($Matches[2])
+        if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 11)) {
+            Write-Host "[OK] Found $versionString" -ForegroundColor Green
+            $pythonOk = $true
+        } else {
+            Write-Host "[WARN] Found $versionString but 3.11+ is required. Installing newer version..." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "[OK] Found Python (version unreadable, continuing)" -ForegroundColor Green
+        $pythonOk = $true
+    }
 }
 
-$versionString = (python --version 2>&1).ToString().Trim()
-Write-Host "[OK] Found $versionString" -ForegroundColor Green
-
-$versionMatch = $versionString -match 'Python (\d+)\.(\d+)'
-if ($versionMatch) {
-    $major = [int]($Matches[1])
-    $minor = [int]($Matches[2])
-    if ($major -lt 3 -or ($major -eq 3 -and $minor -lt 11)) {
-        Write-Host "[ERROR] Python 3.11+ is required. Found $versionString." -ForegroundColor Red
+if (-not $pythonOk) {
+    $installed = Install-ViaWinget -PackageId "Python.Python.3.11" -FriendlyName "Python 3.11"
+    if (-not $installed) {
+        Write-Host "[ERROR] Could not install Python automatically." -ForegroundColor Red
+        Write-Host "        Install Python 3.11+ from https://www.python.org/ (check 'Add to PATH')." -ForegroundColor Red
         exit 1
     }
-} else {
-    Write-Host "[WARN] Could not parse Python version. Continuing anyway..." -ForegroundColor Yellow
+    $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $pythonCmd) {
+        Write-Host "[ERROR] Python still not found in PATH after install." -ForegroundColor Red
+        Write-Host "        Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "[OK] Python installed: $((python --version 2>&1).ToString().Trim())" -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------------------
-# 2. Create virtual environment
+# 2. Java 21 (required by VeraPDF)
+# ---------------------------------------------------------------------------
+$javaCmd = Get-Command java -ErrorAction SilentlyContinue
+if ($javaCmd) {
+    Write-Host "[OK] Java found: $($javaCmd.Source)" -ForegroundColor Green
+} else {
+    Write-Host "[ ] Java not found. Installing Eclipse Temurin 21..." -ForegroundColor Cyan
+    $installed = Install-ViaWinget -PackageId "EclipseAdoptium.Temurin.21.JDK" -FriendlyName "Java 21 (Temurin JDK)"
+    if (-not $installed) {
+        Write-Host "[WARN] Could not install Java automatically." -ForegroundColor Yellow
+        Write-Host "       Install Java 11+ from https://adoptium.net/ then re-run setup.ps1" -ForegroundColor Yellow
+    } else {
+        $javaCmd = Get-Command java -ErrorAction SilentlyContinue
+        if ($javaCmd) {
+            Write-Host "[OK] Java installed: $($javaCmd.Source)" -ForegroundColor Green
+        } else {
+            Write-Host "[WARN] Java installed but not yet in PATH." -ForegroundColor Yellow
+            Write-Host "       Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Yellow
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# 3. Create virtual environment
 # ---------------------------------------------------------------------------
 if (Test-Path ".venv") {
     Write-Host "[OK] .venv already exists - skipping creation." -ForegroundColor Green
@@ -60,7 +128,7 @@ if (Test-Path ".venv") {
 }
 
 # ---------------------------------------------------------------------------
-# 3. Install/upgrade requirements
+# 4. Install/upgrade requirements
 # ---------------------------------------------------------------------------
 Write-Host "[ ] Installing requirements from requirements.txt ..." -ForegroundColor Cyan
 & .\.venv\Scripts\pip install --upgrade pip --quiet
@@ -68,7 +136,7 @@ Write-Host "[ ] Installing requirements from requirements.txt ..." -ForegroundCo
 Write-Host "[OK] Requirements installed." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# 4. Create missing output/temp directories
+# 5. Create missing output/temp directories
 # ---------------------------------------------------------------------------
 $dirs = @(
     "output\reports",
@@ -87,7 +155,7 @@ foreach ($dir in $dirs) {
 }
 
 # ---------------------------------------------------------------------------
-# 5. VeraPDF - install if missing, then update config.py
+# 6. VeraPDF - install if missing, then update config.py
 # ---------------------------------------------------------------------------
 $veraDefaultDir = "$env:USERPROFILE\veraPDF"
 $veraBat = "$veraDefaultDir\verapdf.bat"
@@ -97,13 +165,10 @@ if (Test-Path $veraBat) {
     Write-Host "[OK] VeraPDF already installed at: $veraBat" -ForegroundColor Green
     $veraConfigured = $true
 } else {
-    Write-Host "[ ] VeraPDF not found. Checking for Java..." -ForegroundColor Cyan
     $javaCmd = Get-Command java -ErrorAction SilentlyContinue
     if (-not $javaCmd) {
-        Write-Host "[WARN] Java not found in PATH. VeraPDF requires Java 11+." -ForegroundColor Yellow
-        Write-Host "       Install Java from https://adoptium.net/ then re-run setup.ps1" -ForegroundColor Yellow
+        Write-Host "[WARN] Java not in PATH - skipping VeraPDF install. Re-run setup.ps1 after Java is available." -ForegroundColor Yellow
     } else {
-        Write-Host "[OK] Java found: $($javaCmd.Source)" -ForegroundColor Green
         Write-Host "[ ] Fetching latest VeraPDF release from GitHub..." -ForegroundColor Cyan
         try {
             $releaseInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/veraPDF/veraPDF-apps/releases/latest"
@@ -133,7 +198,6 @@ if (Test-Path $veraBat) {
     }
 }
 
-# Update VERAPDF_COMMAND in config.py if verapdf.bat is present
 if (Test-Path $veraBat) {
     $configPath = (Resolve-Path ".\config.py").Path
     $configContent = Get-Content $configPath -Raw
@@ -149,7 +213,7 @@ if (Test-Path $veraBat) {
 }
 
 # ---------------------------------------------------------------------------
-# 6. Auto-detect Teams OneDrive path and update config.py
+# 7. Auto-detect Teams OneDrive path and update config.py
 # ---------------------------------------------------------------------------
 $oneDriveBase = "$env:USERPROFILE\OneDrive - Cal State LA"
 $teamsFolderName = "PDF Accessibility Checker (PAC) - General"
@@ -175,7 +239,7 @@ if (Test-Path $teamsPath) {
 }
 
 # ---------------------------------------------------------------------------
-# 7. Summary
+# 8. Summary
 # ---------------------------------------------------------------------------
 Write-Host ""
 Write-Host "=====================================================" -ForegroundColor Yellow
@@ -185,13 +249,12 @@ Write-Host ""
 
 if (-not $veraConfigured) {
     Write-Host "  [!] VeraPDF not configured" -ForegroundColor Red
-    Write-Host "      Install VeraPDF from https://verapdf.org/software/" -ForegroundColor Gray
-    Write-Host "      then update VERAPDF_COMMAND in config.py" -ForegroundColor Gray
+    Write-Host "      Re-run setup.ps1 once Java is available in PATH." -ForegroundColor Gray
     Write-Host ""
 }
 if (-not $teamsDetected) {
     Write-Host "  [!] TEAMS_ONEDRIVE_PATH not configured" -ForegroundColor Red
-    Write-Host "      Sign in to OneDrive and sync the Teams channel, then re-run setup.ps1" -ForegroundColor Gray
+    Write-Host "      Sign in to OneDrive, sync the Teams channel, then re-run setup.ps1" -ForegroundColor Gray
     Write-Host "      Expected path: $teamsPath" -ForegroundColor Gray
     Write-Host ""
 }
