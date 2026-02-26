@@ -205,8 +205,26 @@ EXCEL_REPORT_NAME_FORMAT = "{domain_name}-{timestamp}.xlsx"
 # =============================================================================
 
 # Domains are loaded from data/sites.csv (first column, no header).
-# To add or remove a domain, edit data/sites.csv — do not hardcode here.
+# The CSV uses full URLs (e.g. https://www.calstatela.edu/admissions).
+# They are converted to the internal key format (e.g. www.calstatela.edu_admissions)
+# by stripping the scheme and replacing path slashes with underscores.
 import csv as _csv
+
+def _url_to_domain_key(raw: str) -> str:
+    """Convert a full URL or bare domain to the internal domain key format.
+    https://www.calstatela.edu/admissions  ->  www.calstatela.edu_admissions
+    https://discover.calstatela.edu        ->  discover.calstatela.edu
+    www.calstatela.edu_admissions          ->  www.calstatela.edu_admissions  (pass-through)
+    """
+    s = raw.strip()
+    # Strip scheme
+    if "://" in s:
+        s = s.split("://", 1)[1]
+    # Strip trailing slashes
+    s = s.rstrip("/")
+    # Replace path slashes with underscores
+    s = s.replace("/", "_")
+    return s
 
 def _load_domains_from_csv(csv_path):
     domains = []
@@ -214,7 +232,7 @@ def _load_domains_from_csv(csv_path):
         with open(csv_path, newline="", encoding="utf-8") as _f:
             for row in _csv.reader(_f):
                 if row and row[0].strip():
-                    domains.append(row[0].strip())
+                    domains.append(_url_to_domain_key(row[0]))
     return domains
 
 DOMAINS = _load_domains_from_csv(SITES_CSV)
