@@ -10,7 +10,7 @@
 #   3. Creates a .venv virtual environment in the project directory
 #   4. Installs all dependencies from requirements.txt
 #   5. Creates any missing output/temp directories
-#   6. Downloads and silently installs VeraPDF (from verapdf.org) if not present, updates config.py
+#   6. Detects an existing VeraPDF install (searches common locations) and updates config.py
 #   7. Auto-detects Teams OneDrive path and updates config.py
 #   8. Prints any remaining manual configuration steps
 #
@@ -234,70 +234,53 @@ foreach ($dir in $dirs) {
 }
 
 # ---------------------------------------------------------------------------
-# 6. VeraPDF - install if missing, then update config.py
+# 6. VeraPDF - find existing install and update config.py
 # ---------------------------------------------------------------------------
-# %LOCALAPPDATA%\Programs is the standard per-user install location on Windows
-# and is always writable without elevation, unlike the user profile root.
-$veraDefaultDir = "$env:LOCALAPPDATA\Programs\veraPDF"
-$veraBat = "$veraDefaultDir\verapdf.bat"
-# Also check the legacy install path so existing machines aren't broken
-if (-not (Test-Path $veraBat)) {
-    $legacyBat = "$env:USERPROFILE\veraPDF\verapdf.bat"
-    if (Test-Path $legacyBat) { $veraBat = $legacyBat; $veraDefaultDir = "$env:USERPROFILE\veraPDF" }
+# Auto-installs are skipped due to IzPack permission issues on some machines.
+# Instead: search all common install locations, update config.py if found,
+# otherwise print a clear manual-install instruction.
+
+function Find-VeraPDF {
+    $searchRoots = @(
+        "$env:LOCALAPPDATA\Programs\veraPDF",
+        "$env:USERPROFILE\veraPDF",
+        "$env:ProgramFiles\veraPDF",
+        "${env:ProgramFiles(x86)}\veraPDF",
+        "$env:LOCALAPPDATA\veraPDF"
+    )
+    foreach ($root in $searchRoots) {
+        $candidate = Join-Path $root "verapdf.bat"
+        if (Test-Path $candidate) { return $candidate }
+    }
+    # Brute-force: search anywhere under LOCALAPPDATA and USERPROFILE
+    foreach ($base in @($env:LOCALAPPDATA, $env:USERPROFILE)) {
+        $found = Get-ChildItem -Path $base -Recurse -Filter "verapdf.bat" -ErrorAction SilentlyContinue |
+                 Select-Object -First 1 -ExpandProperty FullName
+        if ($found) { return $found }
+    }
+    return $null
 }
+
+$veraBat      = Find-VeraPDF
 $veraConfigured = $false
 
-if (Test-Path $veraBat) {
-    Write-Host "[OK] VeraPDF already installed at: $veraBat" -ForegroundColor Green
+if ($veraBat) {
+    Write-Host "[OK] VeraPDF found at: $veraBat" -ForegroundColor Green
     $veraConfigured = $true
 } else {
-    $javaExe = Find-RealJava
-    if (-not $javaExe) {
-        Write-Host "[WARN] Java not found - skipping VeraPDF install. Re-run setup.ps1 after Java is available." -ForegroundColor Yellow
-    } else {
-        Write-Host "[ ] Downloading VeraPDF installer from verapdf.org..." -ForegroundColor Cyan
-        try {
-            $zipUrl      = "https://software.verapdf.org/rel/verapdf-installer.zip"
-            $zipPath     = "$env:TEMP\verapdf-installer.zip"
-            $extractPath = "$env:TEMP\verapdf-installer-extract"
-
-            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
-            Write-Host "[OK] Download complete." -ForegroundColor Green
-
-            if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
-            Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
-
-            # Find the IzPack installer JAR (named verapdf-izpack-installer-*.jar)
-            $installerJar = Get-ChildItem -Path $extractPath -Recurse -Filter "verapdf-izpack-installer-*.jar" |
-                            Select-Object -First 1 -ExpandProperty FullName
-
-            if ($installerJar) {
-                Write-Host "[ ] Running VeraPDF silent install to $veraDefaultDir ..." -ForegroundColor Cyan
-                # Pre-create the target directory — IzPack needs it to exist
-                New-Item -Path $veraDefaultDir -ItemType Directory -Force | Out-Null
-                # Run directly with & (same session / same user context) so IzPack
-                # inherits the correct permissions, avoiding 'Access is denied'.
-                & $javaExe -jar "$installerJar" -unattended -installpath "$veraDefaultDir"
-                if ($LASTEXITCODE -eq 0 -and (Test-Path $veraBat)) {
-                    Write-Host "[OK] VeraPDF installed at: $veraBat" -ForegroundColor Green
-                    $veraConfigured = $true
-                } else {
-                    Write-Host "[WARN] Silent install finished (exit $LASTEXITCODE) but verapdf.bat not found at:" -ForegroundColor Yellow
-                    Write-Host "       $veraBat" -ForegroundColor Gray
-                    Write-Host "       If veraPDF ended up in a different folder, update VERAPDF_COMMAND in config.py manually." -ForegroundColor Gray
-                }
-            } else {
-                Write-Host "[WARN] Could not locate the VeraPDF IzPack JAR in the downloaded ZIP." -ForegroundColor Yellow
-                Write-Host "       Download manually from https://verapdf.org/software/" -ForegroundColor Yellow
-            }
-        } catch {
-            Write-Host "[WARN] Failed to download/install VeraPDF: $_" -ForegroundColor Yellow
-            Write-Host "       Download manually from https://verapdf.org/software/" -ForegroundColor Yellow
-        }
-    }
+    Write-Host "" 
+    Write-Host "[!] VeraPDF not found. Please install it manually:" -ForegroundColor Yellow
+    Write-Host "    1. Go to https://verapdf.org/software/" -ForegroundColor Cyan
+    Write-Host "    2. Download the Windows installer ZIP" -ForegroundColor Cyan
+    Write-Host "    3. Extract the ZIP, open the extracted folder, and run verapdf-install.bat" -ForegroundColor Cyan
+    Write-Host "    4. When prompted for install location, choose a folder you own, e.g.:" -ForegroundColor Cyan
+    Write-Host "       $env:LOCALAPPDATA\Programs\veraPDF" -ForegroundColor White
+    Write-Host "    5. Re-run setup.ps1 — it will auto-detect the install and configure config.py" -ForegroundColor Cyan
+    Write-Host ""
 }
 
-if (Test-Path $veraBat) {
+if ($veraBat) {
+
     $configPath = (Resolve-Path ".\config.py").Path
     $configContent = Get-Content $configPath -Raw
     $newVeraLine = 'VERAPDF_COMMAND = r"' + $veraBat + '"'
@@ -348,7 +331,8 @@ Write-Host ""
 
 if (-not $veraConfigured) {
     Write-Host "  [!] VeraPDF not configured" -ForegroundColor Red
-    Write-Host "      Re-run setup.ps1 once Java is installed." -ForegroundColor Gray
+    Write-Host "      Install VeraPDF manually from https://verapdf.org/software/" -ForegroundColor Gray
+    Write-Host "      Extract the ZIP, run verapdf-install.bat, then re-run setup.ps1" -ForegroundColor Gray
     Write-Host ""
 }
 if (-not $teamsDetected) {
