@@ -10,7 +10,7 @@ Metrics extracted from each report
 -----------------------------------
 Scanned PDFs sheet:
   - Total rows (all PDF occurrences across all pages)
-  - Violations per row → compliance % (rows with 0 violations / total)
+  - Compliance % (Low Priority PDFs / total unique PDFs — PDFs where Low Priority == "Yes")
   - Average Errors/Page
   - High Priority count (Low Priority == "No")
 
@@ -155,11 +155,12 @@ def parse_excel_report(source: Path | bytes) -> dict | None:
             if isinstance(raw_lp, str) and raw_lp.strip().lower() == "no":
                 high_priority += 1
 
+    low_priority_pdfs = unique_pdfs - high_priority
     result.update(
         total_scanned=unique_pdfs,
         unique_pdfs=unique_pdfs,
-        compliant_scanned=compliant,
-        compliance_pct=round(compliant / unique_pdfs * 100, 1) if unique_pdfs else 0.0,
+        compliant_scanned=low_priority_pdfs,
+        compliance_pct=round(low_priority_pdfs / unique_pdfs * 100, 1) if unique_pdfs else 0.0,
         violations_total=sum(violations_list),
         violations_avg=round(sum(violations_list) / len(violations_list), 1)
         if violations_list
@@ -398,7 +399,7 @@ def _summary_row(domain: str, scans: list[dict]) -> str:
         f'<td class="c">{scans[0]["timestamp"].strftime("%Y-%m-%d")}</td>'
         f'<td class="c">{latest["timestamp"].strftime("%Y-%m-%d")}</td>'
         f'<td class="c">{latest["unique_pdfs"]}</td>'
-        f'<td class="c">{latest["compliance_pct"]:.1f}%</td>'
+        f'<td class="c">{latest["compliance_pct"]:.1f}% ({latest["compliant_scanned"]}/{latest["unique_pdfs"]})</td>'
         f'<td class="c {trend_cls}">{trend_text}</td>'
         f'</tr>\n'
     )
@@ -440,7 +441,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
             f'<td>{ts_cell}</td>'
             f'<td class="c">{s["unique_pdfs"]}</td>'
             f'<td class="c">{s["violations_total"]}</td>'
-            f'<td class="c">{s["compliance_pct"]:.1f}%</td>'
+            f'<td class="c">{s["compliance_pct"]:.1f}% ({s["compliant_scanned"]}/{s["unique_pdfs"]})</td>'
             f'<td class="c">{s["errors_per_page_avg"]:.2f}</td>'
             f'<td class="c">{s["high_priority"]}</td>'
             f'</tr>\n'
@@ -466,7 +467,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
             <canvas id="{pdfs_chart_id}"></canvas>
           </div>
           <div class="chart-box">
-            <h4>Compliance Rate % Over Time</h4>
+            <h4>Compliant (Low Priority) PDFs % Over Time</h4>
             <canvas id="{comp_chart_id}"></canvas>
           </div>
           <div class="chart-box">
@@ -491,7 +492,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
             type:"line",
             data:{{ labels:{_js(date_labels)},
               datasets:[
-                {{ label:"Compliance %", data:{_js(comp_data)}, borderColor:"#27ae60", backgroundColor:"#27ae6018", tension:0.3, fill:true }},
+                {{ label:"Compliant PDFs %", data:{_js(comp_data)}, borderColor:"#27ae60", backgroundColor:"#27ae6018", tension:0.3, fill:true }},
                 {{ label:"Target 100%",  data:{_js([100]*len(scans))}, borderColor:"#b0b8c4", borderDash:[6,4], pointRadius:0, fill:false }}
               ]
             }},
@@ -522,7 +523,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
   <h2>{domain}</h2>
   <div class="cards">
     <div class="card"><span class="val">{latest["unique_pdfs"]}</span><span class="lbl">Unique PDFs<br>(latest)</span></div>
-    <div class="card {card_pct_cls}"><span class="val">{latest["compliance_pct"]:.1f}%</span><span class="lbl">Compliance<br>Rate</span></div>
+    <div class="card {card_pct_cls}"><span class="val">{latest["compliance_pct"]:.1f}%</span><span class="lbl">Compliant PDFs<br>({latest["compliant_scanned"]}/{latest["unique_pdfs"]})</span></div>
     <div class="card"><span class="val">{latest["violations_total"]}</span><span class="lbl">Total<br>Violations</span></div>
     <div class="card"><span class="val">{latest["errors_per_page_avg"]:.2f}</span><span class="lbl">Avg Errors<br>/Page</span></div>
     <div class="card card-warn"><span class="val">{latest["high_priority"]}</span><span class="lbl">High Priority<br>PDFs</span></div>
@@ -534,7 +535,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
     <table>
       <thead><tr>
         <th>Scan Date / Time</th><th>Unique PDFs</th>
-        <th>Total Violations</th><th>Compliance %</th>
+        <th>Total Violations</th><th>Compliant PDFs (Low Priority)</th>
         <th>Avg Err/Page</th><th>High Priority</th>
       </tr></thead>
       <tbody>{trows}</tbody>
@@ -643,7 +644,7 @@ footer{{text-align:center;padding:24px;font-size:.75rem;color:#aaa;border-top:2p
     <table>
       <thead><tr>
         <th>Domain</th><th>Scans</th><th>First Scan</th><th>Latest Scan</th>
-        <th>Unique PDFs</th><th>Compliance %</th><th>Trend</th>
+        <th>Unique PDFs</th><th>Compliant PDFs (Low Priority)</th><th>Trend</th>
       </tr></thead>
       <tbody>{summary_rows}</tbody>
     </table>
