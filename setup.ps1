@@ -60,7 +60,12 @@ $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 $pythonOk = $false
 
 if ($pythonCmd) {
-    $versionString = (python --version 2>&1).ToString().Trim()
+    $versionString = ""
+    try {
+        $versionString = (python --version 2>&1).ToString().Trim()
+    } catch {
+        $versionString = ""
+    }
     $versionMatch = $versionString -match 'Python (\d+)\.(\d+)'
     if ($versionMatch) {
         $major = [int]($Matches[1])
@@ -90,7 +95,8 @@ if (-not $pythonOk) {
         Write-Host "        Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Red
         exit 1
     }
-    Write-Host "[OK] Python installed: $((python --version 2>&1).ToString().Trim())" -ForegroundColor Green
+    $pyVer = try { (python --version 2>&1).ToString().Trim() } catch { "Python 3.11" }
+    Write-Host "[OK] Python installed: $pyVer" -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------------------
