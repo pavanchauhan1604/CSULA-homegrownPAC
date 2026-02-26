@@ -32,7 +32,17 @@ cd CSULA-homegrownPAC
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-### Step 3 - Run the setup script
+### Step 3 — Unblock scripts (ZIP download only)
+
+If you downloaded the repo as a ZIP file instead of using `git clone`, Windows marks the files as coming from the internet and blocks them even after Step 2. Unblock them before running:
+
+```powershell
+Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
+```
+
+> This step is not needed if you used `git clone`.
+
+### Step 4 — Run the setup script
 
 ```powershell
 .\setup.ps1

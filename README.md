@@ -69,7 +69,10 @@ cd CSULA-homegrownPAC
 # 2. Allow PowerShell scripts (once per machine)
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
-# 3. Run automated setup (installs Python, Java, VeraPDF, venv, packages, configures paths)
+# 3. If you downloaded a ZIP instead of git clone, unblock the scripts first
+Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
+
+# 4. Run automated setup (installs Python, Java, VeraPDF, venv, packages, configures paths)
 .\setup.ps1
 ```
 
