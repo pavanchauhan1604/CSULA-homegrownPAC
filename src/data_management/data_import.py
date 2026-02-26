@@ -64,7 +64,14 @@ def add_sites_from_site_csv_file(file_path):
 
             for site in row[0].split(","):
 
-                domain_name = site.replace("www.", "", 1)
+                site = site.strip()
+                # Strip URL scheme (https:// or http://) if present
+                if '://' in site:
+                    site = site.split('://', 1)[1]
+                # Strip www. prefix
+                site = site.replace('www.', '', 1)
+                # Normalize path separator: use _ instead of / for DB storage
+                domain_name = site.replace('/', '_').strip('_')
                 security_group_name = row[1]
                 cursor.execute("INSERT INTO drupal_site (domain_name, security_group_name) VALUES (?, ?)", (domain_name, security_group_name))
                 conn.commit()

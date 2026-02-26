@@ -192,6 +192,14 @@ def generate_spiders():
     
     for site in all_sites:
         try:
+            # Normalize site key: strip URL scheme and www prefix if stored as full URL
+            if '://' in site:
+                site = site.split('://', 1)[1].strip('/')
+                if site.lower().startswith('www.'):
+                    site = site[4:]
+                # Convert path separator from / to _ for consistent key format
+                site = site.replace('/', '_')
+
             # Convert underscores back to slashes for URLs
             site_url = site.replace('_', '/')
             

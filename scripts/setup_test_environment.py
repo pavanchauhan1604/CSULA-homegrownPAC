@@ -299,7 +299,13 @@ def populate_database_from_csv():
                 domain = domain.strip()
                 if not domain:
                     continue
-                domain = domain.replace("www.", "", 1)
+                # Strip URL scheme (https:// or http://) if present
+                if '://' in domain:
+                    domain = domain.split('://', 1)[1]
+                # Strip www. prefix
+                domain = domain.replace('www.', '', 1)
+                # Normalize path separator: use _ instead of / for DB storage
+                domain = domain.replace('/', '_').strip('_')
                 cursor.execute(
                     "INSERT OR IGNORE INTO drupal_site (domain_name, security_group_name) VALUES (?, ?)",
                     (domain, security_group)

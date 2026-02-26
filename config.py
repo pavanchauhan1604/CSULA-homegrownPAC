@@ -355,9 +355,12 @@ def get_excel_report_path(domain_name, *, timestamp=None, prefer_latest=True):
     site_path.mkdir(parents=True, exist_ok=True)
 
     # Consumers (emails, tooling) usually want the newest report.
+    # Build a filesystem-safe version of the domain name (no :// and no /)
+    safe_domain = normalize_domain_key(domain_name).replace('/', '-')
+
     if prefer_latest:
         # New naming convention.
-        candidates = list(site_path.glob(f"{domain_name}-*.xlsx"))
+        candidates = list(site_path.glob(f"{safe_domain}-*.xlsx"))
         # Legacy naming convention(s).
         candidates.extend(site_path.glob("*-pdf-scans*.xlsx"))
         # Ignore Excel temp/lock files.
@@ -370,7 +373,7 @@ def get_excel_report_path(domain_name, *, timestamp=None, prefer_latest=True):
 
         timestamp = datetime.now().strftime(EXCEL_REPORT_TIMESTAMP_FORMAT)
 
-    report_name = EXCEL_REPORT_NAME_FORMAT.format(domain_name=domain_name, timestamp=timestamp)
+    report_name = EXCEL_REPORT_NAME_FORMAT.format(domain_name=safe_domain, timestamp=timestamp)
     return site_path / report_name
 
 

@@ -121,7 +121,8 @@ emails = build_emails()
 os.makedirs('output/emails', exist_ok=True)
 for idx, item in enumerate(emails, 1):
     email_html, recipient, attachments = item[0], item[1], item[2]
-    filename = f'output/emails/email_{idx}_{recipient.replace(chr(64), "_at_").replace(".", "_")}.html'
+    safe = recipient.replace(chr(64), '_at_').replace('.', '_')
+    filename = f'output/emails/email_{idx}_{safe}.html'
     with open(filename, 'w') as f:
         f.write(email_html)
     print(f'  Saved: {filename}')
