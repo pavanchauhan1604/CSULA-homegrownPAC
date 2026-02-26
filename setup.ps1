@@ -57,7 +57,34 @@ function Install-ViaWinget {
 # Helper: find the real python.exe by scanning known install locations,
 # ignoring the Windows Store stub (which lives under WindowsApps\)
 # ---------------------------------------------------------------------------
-function Find-RealPython {
+function Find-RealJava {
+    # Temurin winget install lands in Program Files\Eclipse Adoptium\
+    $adoptiumBase = "$env:ProgramFiles\Eclipse Adoptium"
+    if (Test-Path $adoptiumBase) {
+        $jdkBin = Get-ChildItem $adoptiumBase -Filter "jdk-21*" -Directory -ErrorAction SilentlyContinue |
+                  Select-Object -First 1
+        if (-not $jdkBin) {
+            # Accept any JDK version found as a fallback
+            $jdkBin = Get-ChildItem $adoptiumBase -Filter "jdk-*" -Directory -ErrorAction SilentlyContinue |
+                      Select-Object -First 1
+        }
+        if ($jdkBin) {
+            $candidate = Join-Path $jdkBin.FullName "bin\java.exe"
+            if (Test-Path $candidate) { return $candidate }
+        }
+    }
+    # Also check JAVA_HOME if already set
+    if ($env:JAVA_HOME) {
+        $candidate = Join-Path $env:JAVA_HOME "bin\java.exe"
+        if (Test-Path $candidate) { return $candidate }
+    }
+    # Fall back to PATH
+    $cmd = Get-Command java -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return $null
+}
+
+
     $candidates = @(
         # winget / python.org per-user install (most common)
         "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
@@ -125,21 +152,22 @@ if (-not $pythonOk) {
 # ---------------------------------------------------------------------------
 # 2. Java 21 (required by VeraPDF)
 # ---------------------------------------------------------------------------
-$javaCmd = Get-Command java -ErrorAction SilentlyContinue
-if ($javaCmd) {
-    Write-Host "[OK] Java found: $($javaCmd.Source)" -ForegroundColor Green
+$javaExe = Find-RealJava
+if ($javaExe) {
+    Write-Host "[OK] Java found: $javaExe" -ForegroundColor Green
 } else {
     Write-Host "[ ] Java not found. Installing Eclipse Temurin 21..." -ForegroundColor Cyan
     $installed = Install-ViaWinget -PackageId "EclipseAdoptium.Temurin.21.JDK" -FriendlyName "Java 21 (Temurin JDK)"
     if (-not $installed) {
         Write-Host "[WARN] Could not install Java automatically." -ForegroundColor Yellow
-        Write-Host "       Install Java 11+ from https://adoptium.net/ then re-run setup.ps1" -ForegroundColor Yellow
+        Write-Host "       Install Java 21 from https://adoptium.net/ then re-run setup.ps1" -ForegroundColor Yellow
     } else {
-        $javaCmd = Get-Command java -ErrorAction SilentlyContinue
-        if ($javaCmd) {
-            Write-Host "[OK] Java installed: $($javaCmd.Source)" -ForegroundColor Green
+        # Scan install folder directly - don't rely on PATH being refreshed
+        $javaExe = Find-RealJava
+        if ($javaExe) {
+            Write-Host "[OK] Java installed: $javaExe" -ForegroundColor Green
         } else {
-            Write-Host "[WARN] Java installed but not yet in PATH." -ForegroundColor Yellow
+            Write-Host "[WARN] Java installed but install folder not yet visible." -ForegroundColor Yellow
             Write-Host "       Close this terminal, reopen it, and re-run setup.ps1" -ForegroundColor Yellow
         }
     }
@@ -199,9 +227,9 @@ if (Test-Path $veraBat) {
     Write-Host "[OK] VeraPDF already installed at: $veraBat" -ForegroundColor Green
     $veraConfigured = $true
 } else {
-    $javaCmd = Get-Command java -ErrorAction SilentlyContinue
-    if (-not $javaCmd) {
-        Write-Host "[WARN] Java not in PATH - skipping VeraPDF install. Re-run setup.ps1 after Java is available." -ForegroundColor Yellow
+    $javaExe = Find-RealJava
+    if (-not $javaExe) {
+        Write-Host "[WARN] Java not found - skipping VeraPDF install. Re-run setup.ps1 after Java is available." -ForegroundColor Yellow
     } else {
         Write-Host "[ ] Fetching latest VeraPDF release from GitHub..." -ForegroundColor Cyan
         try {
@@ -283,7 +311,7 @@ Write-Host ""
 
 if (-not $veraConfigured) {
     Write-Host "  [!] VeraPDF not configured" -ForegroundColor Red
-    Write-Host "      Re-run setup.ps1 once Java is available in PATH." -ForegroundColor Gray
+    Write-Host "      Re-run setup.ps1 once Java is installed." -ForegroundColor Gray
     Write-Host ""
 }
 if (-not $teamsDetected) {
