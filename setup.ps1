@@ -10,7 +10,7 @@
 #   3. Creates a .venv virtual environment in the project directory
 #   4. Installs all dependencies from requirements.txt
 #   5. Creates any missing output/temp directories
-#   6. Installs VeraPDF if not already present and updates config.py
+#   6. Downloads and silently installs VeraPDF (from verapdf.org) if not present, updates config.py
 #   7. Auto-detects Teams OneDrive path and updates config.py
 #   8. Prints any remaining manual configuration steps
 #
@@ -248,30 +248,42 @@ if (Test-Path $veraBat) {
     if (-not $javaExe) {
         Write-Host "[WARN] Java not found - skipping VeraPDF install. Re-run setup.ps1 after Java is available." -ForegroundColor Yellow
     } else {
-        Write-Host "[ ] Fetching latest VeraPDF release from GitHub..." -ForegroundColor Cyan
+        Write-Host "[ ] Downloading VeraPDF installer from verapdf.org..." -ForegroundColor Cyan
         try {
-            $releaseInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/veraPDF/veraPDF-apps/releases/latest"
-            $asset = $releaseInfo.assets | Where-Object { $_.name -match "\.exe$" } | Select-Object -First 1
-            if ($asset) {
-                $installerPath = "$env:TEMP\$($asset.name)"
-                Write-Host "[ ] Downloading $($asset.name)..." -ForegroundColor Cyan
-                Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installerPath -UseBasicParsing
-                Write-Host "[OK] Download complete." -ForegroundColor Green
-                Write-Host "[ ] Launching VeraPDF installer. Accept the defaults and click Next/Finish." -ForegroundColor Yellow
-                Start-Process -FilePath $installerPath -Wait
-                if (Test-Path $veraBat) {
+            $zipUrl      = "https://software.verapdf.org/rel/verapdf-installer.zip"
+            $zipPath     = "$env:TEMP\verapdf-installer.zip"
+            $extractPath = "$env:TEMP\verapdf-installer-extract"
+
+            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+            Write-Host "[OK] Download complete." -ForegroundColor Green
+
+            if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+            Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+
+            # Find the IzPack installer JAR (named verapdf-izpack-installer-*.jar)
+            $installerJar = Get-ChildItem -Path $extractPath -Recurse -Filter "verapdf-izpack-installer-*.jar" |
+                            Select-Object -First 1 -ExpandProperty FullName
+
+            if ($installerJar) {
+                Write-Host "[ ] Running VeraPDF silent install to $veraDefaultDir ..." -ForegroundColor Cyan
+                # IzPack 5 supports -unattended and -installpath for headless install
+                $proc = Start-Process -FilePath $javaExe `
+                    -ArgumentList "-jar", "`"$installerJar`"", "-unattended", "-installpath", "`"$veraDefaultDir`"" `
+                    -Wait -PassThru -NoNewWindow
+                if ($proc.ExitCode -eq 0 -and (Test-Path $veraBat)) {
                     Write-Host "[OK] VeraPDF installed at: $veraBat" -ForegroundColor Green
                     $veraConfigured = $true
                 } else {
-                    Write-Host "[WARN] verapdf.bat not found at expected location after install." -ForegroundColor Yellow
-                    Write-Host "       If you changed the install path, update VERAPDF_COMMAND in config.py manually." -ForegroundColor Yellow
+                    Write-Host "[WARN] Silent install finished (exit $($proc.ExitCode)) but verapdf.bat not found at:" -ForegroundColor Yellow
+                    Write-Host "       $veraBat" -ForegroundColor Gray
+                    Write-Host "       If veraPDF ended up in a different folder, update VERAPDF_COMMAND in config.py manually." -ForegroundColor Gray
                 }
             } else {
-                Write-Host "[WARN] Could not find a VeraPDF .exe installer in the latest GitHub release." -ForegroundColor Yellow
+                Write-Host "[WARN] Could not locate the VeraPDF IzPack JAR in the downloaded ZIP." -ForegroundColor Yellow
                 Write-Host "       Download manually from https://verapdf.org/software/" -ForegroundColor Yellow
             }
         } catch {
-            Write-Host "[WARN] Failed to fetch VeraPDF release info: $_" -ForegroundColor Yellow
+            Write-Host "[WARN] Failed to download/install VeraPDF: $_" -ForegroundColor Yellow
             Write-Host "       Download manually from https://verapdf.org/software/" -ForegroundColor Yellow
         }
     }
