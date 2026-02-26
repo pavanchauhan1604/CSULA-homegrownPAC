@@ -114,12 +114,14 @@ def parse_excel_report(source: Path | bytes) -> dict | None:
 
     result: dict[str, Any] = {}
 
-    # ── Scanned PDFs sheet ────────────────────────────────────────────────
-    if "Scanned PDFs" not in wb.sheetnames:
+    # ── Unique PDFs sheet — all metrics are based on deduplicated PDFs ────
+    # Fall back to Scanned PDFs only if Unique PDFs sheet is absent (old reports).
+    sheet_name = "Unique PDFs" if "Unique PDFs" in wb.sheetnames else "Scanned PDFs"
+    if sheet_name not in wb.sheetnames:
         wb.close()
         return None
 
-    rows = list(wb["Scanned PDFs"].iter_rows(values_only=True))
+    rows = list(wb[sheet_name].iter_rows(values_only=True))
     if len(rows) < 2:
         wb.close()
         return None
@@ -129,7 +131,7 @@ def parse_excel_report(source: Path | bytes) -> dict | None:
     ep_idx = col.get("Errors/Page")
     lp_idx = col.get("Low Priority")
 
-    total_scanned = 0
+    unique_pdfs = 0
     compliant = 0
     violations_list: list[int] = []
     ep_list: list[float] = []
@@ -138,7 +140,7 @@ def parse_excel_report(source: Path | bytes) -> dict | None:
     for row in rows[1:]:
         if all(c is None for c in row):
             continue
-        total_scanned += 1
+        unique_pdfs += 1
 
         v = _int_val(row[v_idx] if v_idx is not None else None)
         violations_list.append(v)
@@ -154,9 +156,10 @@ def parse_excel_report(source: Path | bytes) -> dict | None:
                 high_priority += 1
 
     result.update(
-        total_scanned=total_scanned,
+        total_scanned=unique_pdfs,
+        unique_pdfs=unique_pdfs,
         compliant_scanned=compliant,
-        compliance_pct=round(compliant / total_scanned * 100, 1) if total_scanned else 0.0,
+        compliance_pct=round(compliant / unique_pdfs * 100, 1) if unique_pdfs else 0.0,
         violations_total=sum(violations_list),
         violations_avg=round(sum(violations_list) / len(violations_list), 1)
         if violations_list
@@ -164,17 +167,6 @@ def parse_excel_report(source: Path | bytes) -> dict | None:
         high_priority=high_priority,
         errors_per_page_avg=round(sum(ep_list) / len(ep_list), 2) if ep_list else 0.0,
     )
-
-    # ── Unique PDFs sheet ─────────────────────────────────────────────────
-    if "Unique PDFs" in wb.sheetnames:
-        u_rows = list(wb["Unique PDFs"].iter_rows(values_only=True))
-        result["unique_pdfs"] = (
-            len([r for r in u_rows[1:] if not all(c is None for c in r)])
-            if len(u_rows) > 1
-            else 0
-        )
-    else:
-        result["unique_pdfs"] = total_scanned
 
     # ── Failure sheet ─────────────────────────────────────────────────────
     top_errors: dict[str, int] = {}
@@ -405,7 +397,6 @@ def _summary_row(domain: str, scans: list[dict]) -> str:
         f'<td class="c">{len(scans)}</td>'
         f'<td class="c">{scans[0]["timestamp"].strftime("%Y-%m-%d")}</td>'
         f'<td class="c">{latest["timestamp"].strftime("%Y-%m-%d")}</td>'
-        f'<td class="c">{latest["total_scanned"]}</td>'
         f'<td class="c">{latest["unique_pdfs"]}</td>'
         f'<td class="c">{latest["compliance_pct"]:.1f}%</td>'
         f'<td class="c {trend_cls}">{trend_text}</td>'
@@ -419,8 +410,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
     multi = len(scans) >= 2
 
     date_labels = [s["timestamp"].strftime("%Y-%m-%d %H:%M") for s in scans]
-    total_data  = [s["total_scanned"] for s in scans]
-    unique_data = [s["unique_pdfs"]   for s in scans]
+    unique_data = [s["unique_pdfs"] for s in scans]
     comp_data   = [s["compliance_pct"] for s in scans]
     ep_data     = [s["errors_per_page_avg"] for s in scans]
 
@@ -448,7 +438,6 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
         trows += (
             f'<tr>'
             f'<td>{ts_cell}</td>'
-            f'<td class="c">{s["total_scanned"]}</td>'
             f'<td class="c">{s["unique_pdfs"]}</td>'
             f'<td class="c">{s["violations_total"]}</td>'
             f'<td class="c">{s["compliance_pct"]:.1f}%</td>'
@@ -492,8 +481,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
             type:"line",
             data:{{ labels:{_js(date_labels)},
               datasets:[
-                {{ label:"Total Scanned", data:{_js(total_data)}, borderColor:"#003262", backgroundColor:"#00326220", tension:0.3, fill:false }},
-                {{ label:"Unique PDFs",   data:{_js(unique_data)}, borderColor:"#C4820E",  backgroundColor:"#C4820E20",  tension:0.3, fill:false }}
+                {{ label:"Unique PDFs", data:{_js(unique_data)}, borderColor:"#003262", backgroundColor:"#00326220", tension:0.3, fill:false }}
               ]
             }},
             options:{{ responsive:true, plugins:{{ legend:{{ position:"top" }} }}, scales:{{ y:{{ beginAtZero:true }} }} }}
@@ -533,7 +521,6 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
 <section id="{_anchor(domain)}" class="domain-section">
   <h2>{domain}</h2>
   <div class="cards">
-    <div class="card"><span class="val">{latest["total_scanned"]}</span><span class="lbl">Total PDFs<br>(latest)</span></div>
     <div class="card"><span class="val">{latest["unique_pdfs"]}</span><span class="lbl">Unique PDFs<br>(latest)</span></div>
     <div class="card {card_pct_cls}"><span class="val">{latest["compliance_pct"]:.1f}%</span><span class="lbl">Compliance<br>Rate</span></div>
     <div class="card"><span class="val">{latest["violations_total"]}</span><span class="lbl">Total<br>Violations</span></div>
@@ -546,7 +533,7 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>Scan Date / Time</th><th>Total PDFs</th><th>Unique PDFs</th>
+        <th>Scan Date / Time</th><th>Unique PDFs</th>
         <th>Total Violations</th><th>Compliance %</th>
         <th>Avg Err/Page</th><th>High Priority</th>
       </tr></thead>
@@ -656,7 +643,7 @@ footer{{text-align:center;padding:24px;font-size:.75rem;color:#aaa;border-top:2p
     <table>
       <thead><tr>
         <th>Domain</th><th>Scans</th><th>First Scan</th><th>Latest Scan</th>
-        <th>Total PDFs</th><th>Unique PDFs</th><th>Compliance %</th><th>Trend</th>
+        <th>Unique PDFs</th><th>Compliance %</th><th>Trend</th>
       </tr></thead>
       <tbody>{summary_rows}</tbody>
     </table>
@@ -747,8 +734,7 @@ def main() -> None:
         sys.exit(0)
 
     generated_at = datetime.now()
-    ts = generated_at.strftime(config.EXCEL_REPORT_TIMESTAMP_FORMAT)
-    report_filename = f"historical_analysis_{ts}.html"
+    report_filename = "historical_analysis.html"
 
     print(f"Generating reports for {len(domain_data)} domain(s)…\n")
     saved = 0
