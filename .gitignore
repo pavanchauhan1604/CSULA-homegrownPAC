@@ -43,9 +43,7 @@ output/scans/**
 .DS_Store
 Thumbs.db
 
-# CSV data (may contain sensitive info)
-# data/*.csv  # tracked intentionally — private repo, university personnel only
-data/employees.csv
+# CSV data tracked intentionally — private repo, university personnel only
 
 # Logs
 *.log
