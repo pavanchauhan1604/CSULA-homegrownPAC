@@ -44,7 +44,8 @@ output/scans/**
 Thumbs.db
 
 # CSV data (may contain sensitive info)
-data/*.csv
+# data/*.csv  # tracked intentionally — private repo, university personnel only
+data/employees.csv
 
 # Logs
 *.log
