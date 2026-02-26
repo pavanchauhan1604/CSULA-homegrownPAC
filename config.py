@@ -204,71 +204,22 @@ EXCEL_REPORT_NAME_FORMAT = "{domain_name}-{timestamp}.xlsx"
 # SCAN DOMAIN LIST
 # =============================================================================
 
-# Domains/paths to scan.
-# Note: Use underscore (_) instead of slash (/) for URL paths.
-DOMAINS = [
-    # --- Previously scanned (commented out) ---
-    # "www.calstatela.edu_academicsenate",
-    # "www.calstatela.edu_al",
-    # "www.calstatela.edu_business",
-    # "www.calstatela.edu_coe",
-    # "www.calstatela.edu_ecst",
-    # "www.calstatela.edu_hhs",
-    # "www.calstatela.edu_library",
-    # "www.calstatela.edu_specialcollections",
-    # "www.calstatela.edu_futurelibrary",
-    # "libguides.calstatela.edu",
-    # "libcal.calstatela.edu",
-    # "libanswers.calstatela.edu",
-    # "directory.calstatela.edu",
-    # "digitalcollections.calstatela.edu",
-    # "www.calstatela.edu_nss",
-    # "www.calstatela.edu_osd",
-    # "www.calstatela.edu_admfin",
-    # "www.calstatela.edu_its",
-    # "www.calstatela.edu_advancement",
-    # "www.calstatela.edu_FinOpsPlanning",
-    # "www.calstatela.edu_edtech",
-    # "www.calstatela.edu_eop",
-    # "www.calstatela.edu_studenthealthcenter",
-    # --- New unique domains ---
-    "www.calstatela.edu_admissions",
-    "www.calstatela.edu_abacc",
-    "www.calstatela.edu_budget",
-    "www.calstatela.edu_careercenter",
-    "www.calstatela.edu_cetl",
-    "www.calstatela.edu_page",
-    "www.calstatela.edu_strategic-communications",
-    "www.calstatela.edu_academic_pas",
-    "www.calstatela.edu_publicsafety",
-    "discover.calstatela.edu",
-    "www.calstatela.edu_dtla",
-    "www.calstatela.edu_emeriti",
-    "www.calstatela.edu_academic_emt",
-    "www.calstatela.edu_financialaid",
-    "www.calstatela.edu_graduatestudies",
-    "www.calstatela.edu_honorscollege",
-    "www.calstatela.edu_housing",
-    "www.calstatela.edu_hrm",
-    "www.calstatela.edu_immigration",
-    "www.calstatela.edu_InstitutionalEffectiveness",
-    "www.calstatela.edu_international",
-    "www.calstatela.edu_FacultyAffairs",
-    "www.calstatela.edu_orsca",
-    "www.calstatela.edu_president",
-    "www.calstatela.edu_provost",
-    "www.calstatela.edu_finance-onestop",
-    "www.calstatela.edu_parking",
-    "www.calstatela.edu_patbrowninstitute",
-    "www.calstatela.edu_uas",
-    "www.calstatela.edu_registrar",
-]
+# Domains are loaded from data/sites.csv (first column, no header).
+# To add or remove a domain, edit data/sites.csv — do not hardcode here.
+import csv as _csv
+
+def _load_domains_from_csv(csv_path):
+    domains = []
+    if csv_path.exists():
+        with open(csv_path, newline="", encoding="utf-8") as _f:
+            for row in _csv.reader(_f):
+                if row and row[0].strip():
+                    domains.append(row[0].strip())
+    return domains
+
+DOMAINS = _load_domains_from_csv(SITES_CSV)
 
 # Backwards-compatible aliases (older code may still import these).
-# NOTE: Some parts of the pipeline historically used the `USE_TEST_DOMAINS_ONLY`
-# switch to decide whether to scan from a hardcoded list vs. loading from CSV.
-# To avoid regressions, keep this enabled while still treating `DOMAINS` as the
-# canonical list.
 TEST_DOMAINS = DOMAINS
 USE_TEST_DOMAINS_ONLY = True
 
