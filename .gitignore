@@ -26,7 +26,7 @@ ENV/
 temp/*.pdf
 temp/*.json
 
-# Output files
+# Output files (generated — do not track)
 output/reports/*.xlsx
 output/reports/*.html
 output/emails/*.msg
@@ -36,8 +36,9 @@ output/emails/sent/
 output/backups/*.db
 output/scans/**
 
-# Keep empty output folders in git
+# Keep empty output folders and the email template in git
 !output/**/.gitkeep
+!output/emails/email_template.html
 
 # OS files
 .DS_Store
