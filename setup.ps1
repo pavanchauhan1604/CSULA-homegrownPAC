@@ -266,6 +266,10 @@ if (Test-Path $veraBat) {
 
             if ($installerJar) {
                 Write-Host "[ ] Running VeraPDF silent install to $veraDefaultDir ..." -ForegroundColor Cyan
+                # IzPack requires the target directory to exist before install
+                if (-not (Test-Path $veraDefaultDir)) {
+                    New-Item -Path $veraDefaultDir -ItemType Directory -Force | Out-Null
+                }
                 # IzPack 5 supports -unattended and -installpath for headless install
                 $proc = Start-Process -FilePath $javaExe `
                     -ArgumentList "-jar", "`"$installerJar`"", "-unattended", "-installpath", "`"$veraDefaultDir`"" `
