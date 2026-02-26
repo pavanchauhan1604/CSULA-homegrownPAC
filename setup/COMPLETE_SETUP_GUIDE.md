@@ -1,8 +1,10 @@
 # CSULA PDF Accessibility Checker - Complete Setup & Run Guide
 
-**Last Updated:** October 27, 2025
+**Last Updated:** February 2026
 
-This is the **ONLY** guide you need to set up and run the CSULA PDF Accessibility Checker from scratch.
+This guide covers setup and operation of the CSULA PDF Accessibility Checker.
+
+> **Windows users:** The easiest way to get started is `.\setup.ps1` — it automates everything (Python, Java, VeraPDF, virtual environment, packages, and path configuration). See [WINDOWS_INSTALLATION_GUIDE.md](WINDOWS_INSTALLATION_GUIDE.md).
 
 ---
 
@@ -20,110 +22,30 @@ This is the **ONLY** guide you need to set up and run the CSULA PDF Accessibilit
 ## 1️⃣ Prerequisites
 
 ### System Requirements
-- **Operating System:** macOS, Linux, or Windows
-- **Python:** Version 3.11 or higher
+- **Operating System:** Windows 10/11
 - **Disk Space:** At least 2GB free
 
-### Required Software
+### Setup (Windows)
 
-#### Install Python 3.11+
-```bash
-# Check your Python version
-python3 --version
-
-# If you need to install Python 3.11+, visit:
-# https://www.python.org/downloads/
-```
-
-#### Install VeraPDF (Required for PDF Analysis)
-```bash
-# macOS (using Homebrew)
-brew install verapdf
-
-# Linux
-wget https://software.verapdf.org/releases/verapdf-installer.zip
-unzip verapdf-installer.zip
-./verapdf-install
-
-# Windows
-# Download from: https://verapdf.org/software/
-# Run the installer and add to PATH
-```
-
-Verify VeraPDF installation:
-```bash
-verapdf --version
-# Should show: veraPDF 1.28.0 or higher
-```
+Run `.\setup.ps1` from the project root. It will automatically install Python 3.11, Java 21, VeraPDF, create the virtual environment, and install all packages. See [WINDOWS_INSTALLATION_GUIDE.md](WINDOWS_INSTALLATION_GUIDE.md) for step-by-step instructions.
 
 ---
 
 ## 2️⃣ Initial Setup
 
-### Step 1: Navigate to Project Directory
-```bash
-# macOS/Linux example
-cd /path/to/CSULA-homegrownPAC
-
-# Windows (PowerShell) example
-# cd C:\path\to\CSULA-homegrownPAC
-```
-
-### Step 2: Install Python Packages
-
-Recommended: use a virtual environment and install from `requirements.txt`.
-
-**macOS/Linux:**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install --upgrade pip
-python3 -m pip install -r requirements.txt
-```
-
-**Windows (PowerShell):**
+### Step 1: Clone and enter the project directory
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+git clone https://github.com/pavanchauhan1604/CSULA-homegrownPAC.git
+cd CSULA-homegrownPAC
 ```
 
-If PowerShell blocks activation:
+### Step 2: Run automated setup
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+.\setup.ps1
 ```
 
-**Required Packages:**
-- `scrapy` - Web crawling framework
-- `requests` - HTTP library
-- `beautifulsoup4` - HTML parsing
-- `lxml` - XML processing
-- `openpyxl` - Excel file generation
-- `jinja2` - HTML report templating
-- `pandas` - DOA imports / data handling
-- `pikepdf` - PDF manipulation
-- `pdfminer.six` - PDF text extraction
-- `chardet` - Character encoding detection
-- `urllib3` - HTTP client
-
-**Windows-only:**
-- `pywin32` - required for Outlook Desktop email automation (installed automatically on Windows)
-
-**Verify Installation:**
-```bash
-python -c "import scrapy, requests, openpyxl; print('All packages installed successfully!')"
-```
-
-### Step 3: Make Scripts Executable
-
-This step is **macOS/Linux only**. Windows users can skip this.
-
-```bash
-chmod +x scripts/run_workflow.sh
-chmod +x scripts/fresh_start.sh
-chmod +x scripts/check_progress.sh
-```
+This installs Python, Java, VeraPDF, creates `.venv`, installs all packages, and writes `VERAPDF_COMMAND` and `TEAMS_ONEDRIVE_PATH` into `config.py`.
 
 ---
 
@@ -178,9 +100,11 @@ The system uses CSV files in the `data/` folder to define:
 
 **Format of sites.csv:**
 ```csv
-calstatela.edu,CSULA-d-main-site-content-manager
-www-adminfin.calstatela.edu,CSULA-d-adminfin-content-manager
+https://www.calstatela.edu/admissions,CSULA-content-manager_pchauha5
+https://www.calstatela.edu/financialaid,CSULA-content-manager_jsmith
 ```
+
+Add or remove domains by editing this file. Full `https://` URLs are required.
 
 **Format of employees.csv:**
 ```csv
@@ -209,105 +133,66 @@ CSULA-d-adminfin-content-manager,Jane Smith,234567,jane.smith@calstatela.edu
 
 ### Quick Start (Recommended)
 
-**For a fresh start (cleans everything):**
-```bash
-cd /path/to/CSULA-homegrownPAC
-./scripts/fresh_start.sh && ./scripts/run_workflow.sh
+```powershell
+.\scripts\run_workflow_smooth.ps1
 ```
 
-**Windows:** use the step-by-step commands in `setup/WINDOWS_INSTALLATION_GUIDE.md` (the `.sh` scripts are not used on Windows).
+This runs all 7 steps automatically. For a completely clean run first:
 
-This will:
-1. Clean all previous data (database, output files, temp files)
-2. Run the complete workflow from scratch
+```powershell
+.\scripts\fresh_start.ps1
+.\scripts\run_workflow_smooth.ps1
+```
 
 ### Step-by-Step Workflow
 
-The workflow consists of 7 steps:
+The workflow consists of 7 steps (all handled automatically by `.\scripts\run_workflow_smooth.ps1`):
 
-#### **Step 0: Setup Database and Load Test Data**
-```bash
-python3 scripts/setup_test_environment.py
+#### **Step 0: Setup Database and Load Data**
+```powershell
+python scripts/setup_test_environment.py
 ```
-- Creates database tables
-- Generates CSV files from `config.py` settings
-- Loads domains, users, and assignments into database
 
 #### **Step 1: Generate Spiders**
-```bash
-python3 config/generate_spiders.py
+```powershell
+python config/generate_spiders.py
 ```
-- Creates Scrapy spiders for each domain in the database
-- One spider per domain
 
 #### **Step 2: Crawl Websites to Find PDFs**
-```bash
-cd crawlers/sf_state_pdf_scan && python3 run_all_spiders.py
+```powershell
+cd crawlers\sf_state_pdf_scan; python run_all_spiders.py; cd ..\..
 ```
 - Crawls each domain (up to 3 levels deep)
-- Finds all PDF links
-- Saves results to `output/scans/{domain}/scanned_pdfs.txt`
 - **Time:** 5-15 minutes per domain
 
-#### **Step 3: Check Crawl Results**
-```bash
-find output/scans -name 'scanned_pdfs.txt' -exec wc -l {} +
+#### **Step 3: Analyze PDFs for Accessibility**
+```powershell
+python master_functions.py
 ```
-- Shows how many PDFs were found per domain
-
-#### **Step 4: Analyze PDFs for Accessibility**
-```bash
-python3 master_functions.py
-```
-- Downloads each PDF
-- Runs VeraPDF validation
-- Analyzes accessibility violations
-- Stores results in database
+- Runs VeraPDF validation on each PDF
 - **Time:** 30-60 minutes (depends on number of PDFs)
 
-#### **Step 5: Generate Excel Reports**
-```bash
-python3 -c "
-from master_functions import build_all_xcel_reports
-build_all_xcel_reports()
-"
+#### **Step 4: Generate Excel Reports**
+```powershell
+python -c "from master_functions import build_all_xcel_reports; build_all_xcel_reports()"
 ```
-- Creates Excel files with PDF scan results
-- Saves to `output/scans/{domain}/{domain}-pdf-scans.xlsx`
 
-#### **Step 6: Generate Email Reports**
-```bash
-python3 -c "
-from master_functions import build_emails
-build_emails()
-"
+#### **Step 5: Generate Email Reports**
+```powershell
+python -c "from master_functions import build_emails; build_emails()"
 ```
-- Creates HTML email reports for each domain manager
-- Saves to `output/emails/email_{name}.html`
 
-#### **Step 7: View Results**
-```bash
-# Open Excel reports
-open output/scans/*/*.xlsx
-
-# Open email previews
-open output/emails/*.html
-
-# Query database
-sqlite3 drupal_pdfs.db
+#### **Step 6: View Results**
+```powershell
+explorer .\output\scans
+explorer .\output\emails
 ```
 
 ### Monitoring Progress
 
-While the workflow is running, you can check progress:
-```bash
-./scripts/check_progress.sh
+```powershell
+.\scripts\check_progress.ps1
 ```
-
-This shows:
-- Number of PDFs found
-- Number of PDFs analyzed
-- Current status
 
 ---
 
@@ -440,52 +325,51 @@ If you encounter issues:
 
 ---
 
-## 📚 Quick Reference
+## Quick Reference
 
 ### Essential Commands
 
-```bash
+```powershell
 # Fresh start (clean everything and run)
-./scripts/fresh_start.sh && ./scripts/run_workflow.sh
+.\scripts\fresh_start.ps1
+.\scripts\run_workflow_smooth.ps1
 
 # Run complete workflow (without cleaning)
-./scripts/run_workflow.sh
+.\scripts\run_workflow_smooth.ps1
 
 # Check progress
-./scripts/check_progress.sh
+.\scripts\check_progress.ps1
 
-# Clean everything for fresh start
-./scripts/fresh_start.sh
+# Send emails via Outlook Desktop
+.\scripts\send_emails.ps1 -Force
 
 # View configuration
-python3 -c "import config; config.print_config()"
+python -c "import config; config.print_config()"
 
-# Open Excel reports
-open output/scans/*/*.xlsx
-
-# Open email previews
-open output/emails/*.html
+# Open results in File Explorer
+explorer .\output\scans
+explorer .\output\emails
 ```
 
 ### Directory Structure
 
 ```
 CSULA-homegrownPAC/
-├── config.py                    # MAIN CONFIGURATION FILE
+├── config.py                    # Central configuration (auto-written by setup.ps1)
+├── setup.ps1                    # One-time machine setup
 ├── master_functions.py          # Main workflow orchestrator
-├── scripts/                     # Executable scripts
-│   ├── run_workflow.sh         # Complete workflow automation
-│   ├── fresh_start.sh          # Clean and reset everything
-│   ├── check_progress.sh       # Monitor progress
-│   └── setup_test_environment.py  # Database setup
+├── scripts/                     # PowerShell scripts
+│   ├── run_workflow_smooth.ps1  # Complete workflow automation
+│   ├── fresh_start.ps1          # Clean and reset everything
+│   ├── check_progress.ps1       # Monitor progress
+│   ├── send_emails.ps1          # Send emails via Outlook Desktop
+│   └── setup_test_environment.py
 ├── setup/                       # Setup documentation
 │   └── COMPLETE_SETUP_GUIDE.md # This file
 ├── config/                      # Spider generation
-│   ├── generate_spiders.py
-│   ├── priority_profiles.py
-│   └── sites.py
+│   └── generate_spiders.py
 ├── data/                        # CSV data files
-│   ├── sites.csv
+│   ├── sites.csv                # Domain list (full URLs) -- edit to add/remove domains
 │   ├── employees.csv
 │   ├── managers.csv
 │   └── site_assignments.csv
@@ -502,33 +386,25 @@ CSULA-homegrownPAC/
 │   └── utilities/              # Helper functions
 ├── sql/                         # SQL query files
 ├── temp/                        # Temporary files
-└── drupal_pdfs.db              # SQLite database
+└── drupal_pdfs.db              # SQLite database (auto-generated)
 ```
 
 ---
 
-## 🎯 Production Deployment
+## Production Deployment
 
 When ready to run on all domains:
 
-1. **Update config.py:**
+1. **Edit `data/sites.csv`** to include all domains (full `https://` URLs)
+
+2. **Update `config.py`:**
    ```python
    USE_TEST_DOMAINS_ONLY = False
    ```
 
-2. **Load all domains into database:**
-   - Edit `data/sites.csv` with all domains
-   - Run `python3 scripts/setup_test_environment.py`
-
 3. **Run workflow:**
-   ```bash
-   ./scripts/run_workflow.sh
-   ```
-
-4. **Schedule regular scans:**
-   ```bash
-   # Add to crontab for weekly scans (every Monday at 2 AM)
-   0 2 * * 1 cd /Users/pavan/Work/CSULA-homegrownPAC && ./scripts/fresh_start.sh && ./scripts/run_workflow.sh
+   ```powershell
+   .\scripts\run_workflow_smooth.ps1
    ```
 
 ---

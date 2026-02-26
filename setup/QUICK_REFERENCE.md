@@ -1,74 +1,65 @@
 # CSULA PDF Checker - Quick Reference Card
 
-## 🚀 Quick Start
+## Setup (new machine)
 
-```bash
-# macOS/Linux: complete fresh run (recommended for first time)
-cd /path/to/CSULA-homegrownPAC
-./scripts/fresh_start.sh && ./scripts/run_workflow.sh
+```powershell
+git clone https://github.com/pavanchauhan1604/CSULA-homegrownPAC.git
+cd CSULA-homegrownPAC
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+.\setup.ps1
 ```
-
-**Windows (PowerShell):** follow the step-by-step workflow in `setup/WINDOWS_INSTALLATION_GUIDE.md`.
 
 ---
 
-## ⚙️ Configuration
+## Daily Workflow
+
+```powershell
+# Run the full pipeline
+.\scripts\run_workflow_smooth.ps1
+
+# Send emails via Outlook Desktop
+.\scripts\send_emails.ps1 -Force
+
+# Check scan progress (while pipeline is running)
+.\scripts\check_progress.ps1
+
+# Reset to clean slate (backs up DB, clears all outputs)
+.\scripts\fresh_start.ps1
+```
+
+---
+
+## Configuration
 
 **File to edit:** `config.py`
 
 ```python
-# Change your test domains
-TEST_DOMAINS = [
-    "calstatela.edu",
-]
-
-# Change test email
+# Test email recipient
 TEST_EMAIL_RECIPIENT = "your.email@calstatela.edu"
 
-# Production mode (scans ALL domains)
-USE_TEST_DOMAINS_ONLY = False  # Set to False for production
+# Production mode (scan ALL domains from data/sites.csv)
+USE_TEST_DOMAINS_ONLY = False
+```
+
+**To add or remove domains**, edit `data/sites.csv` (full URLs):
+```csv
+https://www.calstatela.edu/admissions,CSULA-content-manager_pchauha5
 ```
 
 ---
 
-## 📝 Common Commands
-
-```bash
-# Clean everything and restart
-./scripts/fresh_start.sh
-
-# Run complete workflow
-./scripts/run_workflow.sh
-
-# Check progress while running
-./scripts/check_progress.sh
-
-# View configuration
-python3 -c "import config; config.print_config()"
-
-# Open results
-open output/scans/*/*.xlsx        # Excel reports
-open output/emails/*.html         # Email previews
-
-# Database queries
-sqlite3 drupal_pdfs.db            # Open database
-```
-
-**Windows (PowerShell) equivalents:**
+## Other Useful Commands
 
 ```powershell
-# View configuration
+# View current configuration
 python -c "import config; config.print_config()"
 
-# Generate email previews (HTML)
-python scripts\generate_emails.py
-
-# Send emails (Windows + Outlook Desktop)
-python scripts\send_emails.py
-
-# Open outputs in File Explorer
+# Open results in File Explorer
 explorer .\output\scans
 explorer .\output\emails
+
+# Upload Excel reports to Teams via OneDrive
+python scripts\teams_upload.py
 ```
 
 ---
@@ -102,28 +93,33 @@ GROUP BY s.domain_name;
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| "No such table" error | Run `python3 scripts/setup_test_environment.py` |
-| "verapdf: command not found" | Install VeraPDF and ensure it is in PATH (Windows installer: https://software.verapdf.org/) |
-| Spiders already completed | Run `./scripts/fresh_start.sh` |
+| "No such table" error | Run `.\scripts\run_workflow_smooth.ps1` (Step 0 creates the DB) |
+| "verapdf: command not found" | Re-run `.\setup.ps1` to auto-install VeraPDF |
+| Python / Java not in PATH | Close terminal, reopen, re-run `.\setup.ps1` |
+| OneDrive path not detected | Sign in to OneDrive, sync the Teams channel, then re-run `.\setup.ps1` |
+| Spiders already completed | Run `.\scripts\fresh_start.ps1` |
 | SSL certificate errors | Already handled (SSL verification disabled) |
-| Duplicate PDFs | Normal - same PDF on different pages |
+| Duplicate PDFs | Normal -- same PDF on different pages |
 
 ---
 
-## 📁 Important Files
+## Important Files
 
 ```
-config.py                        # EDIT THIS for configuration
-scripts/run_workflow.sh          # Complete workflow
-scripts/fresh_start.sh           # Clean and reset
-scripts/check_progress.sh        # Monitor progress
-output/scans/{domain}/*.xlsx     # Excel reports
-output/emails/*.html             # Email previews
-drupal_pdfs.db                   # Database
+config.py                             # Central configuration (paths auto-written by setup.ps1)
+data/sites.csv                        # Domain list (full URLs) -- edit here to add/remove domains
+setup.ps1                             # One-time machine setup (Python, Java, VeraPDF, venv, packages)
+scripts/run_workflow_smooth.ps1       # Full 7-step pipeline
+scripts/send_emails.ps1               # Send emails via Outlook Desktop
+scripts/check_progress.ps1            # Progress report with progress bar
+scripts/fresh_start.ps1               # Clean reset (backs up DB, clears outputs)
+output/scans/{domain}/*.xlsx          # Excel reports
+output/emails/*.html                  # Email previews
+drupal_pdfs.db                        # SQLite database (auto-generated)
 ```
 
 ---

@@ -59,42 +59,49 @@ CSULA-homegrownPAC/
 
 ## Quick Start
 
-### 1. Initial Setup
-```bash
-# Create database tables
-python src/core/database.py
+### First time on a new machine
 
-# Import employee and site data
-python src/data_management/data_import.py
+```powershell
+# 1. Clone and enter repo
+git clone https://github.com/pavanchauhan1604/CSULA-homegrownPAC.git
+cd CSULA-homegrownPAC
+
+# 2. Allow PowerShell scripts (once per machine)
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+# 3. Run automated setup (installs Python, Java, VeraPDF, venv, packages, configures paths)
+.\setup.ps1
 ```
 
-### 2. Run Full Scan
-```bash
-# Complete workflow: crawl → test → report
-python master_functions.py
-# Then call: create_all_pdf_reports()
+> See [setup/WINDOWS_INSTALLATION_GUIDE.md](setup/WINDOWS_INSTALLATION_GUIDE.md) for full details and troubleshooting.
+
+### Daily workflow
+
+```powershell
+# Run the full pipeline (crawl -> analyze -> Excel reports -> email HTML)
+.\scripts\run_workflow_smooth.ps1
+
+# Send emails via Outlook Desktop
+.\scripts\send_emails.ps1 -Force
+
+# Check scan progress while pipeline is running
+.\scripts\check_progress.ps1
+
+# Reset to a clean slate (backs up DB, clears all outputs)
+.\scripts\fresh_start.ps1
 ```
 
-### 3. Generate Reports
-```bash
-# Generate Excel reports for all sites
-python master_functions.py
-# Then call: build_all_xcel_reports()
+### Managing domains
+
+Edit **`data/sites.csv`** to add or remove domains (full URLs, one per line):
+
+```csv
+https://www.calstatela.edu/admissions,CSULA-content-manager_pchauha5
+https://www.calstatela.edu/financialaid,CSULA-content-manager_jsmith
 ```
 
-### 4. Send Emails
-```bash
-# Send PDF accessibility reports via Outlook automation (Windows-only)
-python3 scripts/send_emails.py
-```
-
-### 5. Generate HTML Dashboard
-```bash
-python src/reporting/html_report.py
-```
-
-### 6. Upload Reports to Teams (OneDrive)
-```bash
+### Upload Reports to Teams (OneDrive)
+```powershell
 # Copies the latest Excel report for each domain into the synced Teams channel folder
 python scripts/teams_upload.py
 
@@ -102,16 +109,13 @@ python scripts/teams_upload.py
 python scripts/teams_upload.py --domains www.calstatela.edu_admissions
 ```
 
-### 7. Generate Historical Analysis Dashboards
-```bash
+### Generate Historical Analysis Dashboards
+```powershell
 # Generate per-domain HTML trend dashboards from all timestamped reports in OneDrive
 python scripts/historical_analysis.py
 
 # Save to local output/reports/ instead of OneDrive
 python scripts/historical_analysis.py --no-upload
-
-# Specific domains only
-python scripts/historical_analysis.py --domains www.calstatela.edu_admissions
 ```
 
 ## Key Features
@@ -130,31 +134,19 @@ python scripts/historical_analysis.py --domains www.calstatela.edu_admissions
 
 ## Requirements
 
-- Python 3.x
-- VeraPDF (external CLI tool)
+- Python 3.11+ (auto-installed by `setup.ps1`)
+- Java 21+ (auto-installed by `setup.ps1`, required for VeraPDF)
+- VeraPDF (auto-downloaded and installed by `setup.ps1`)
 - SQLite
-- Libraries: scrapy, pikepdf, pdfminer.six, openpyxl, jinja2, beautifulsoup4, requests
+- Libraries: scrapy, pikepdf, pdfminer.six, openpyxl, jinja2, beautifulsoup4, requests (all installed from `requirements.txt` by `setup.ps1`)
 
-### Install Python dependencies
+### Windows setup
 
-```bash
-python -m pip install -r requirements.txt
-```
-
-### Windows
-
-For a complete Windows setup (PowerShell + venv + VeraPDF + Outlook Desktop sending), see: `setup/WINDOWS_INSTALLATION_GUIDE.md`.
+Run `.\setup.ps1` from the project root. See [setup/WINDOWS_INSTALLATION_GUIDE.md](setup/WINDOWS_INSTALLATION_GUIDE.md) for details.
 
 ### Teams / OneDrive Setup
 
-Set `TEAMS_ONEDRIVE_PATH` in `config.py` to the locally synced Teams channel folder (e.g. the folder that appears under OneDrive in File Explorer when you sync the channel). No Azure registration or API credentials are required.
-
-```python
-# config.py
-TEAMS_ONEDRIVE_PATH = r"C:\Users\<you>\OneDrive - Cal State LA\PDF Accessibility Checker (PAC) - General"
-```
-
-Domain subfolders are created automatically on first upload.
+`setup.ps1` auto-detects and writes `TEAMS_ONEDRIVE_PATH` in `config.py` if the *"PDF Accessibility Checker (PAC) - General"* Teams channel folder is already synced via OneDrive. Domain subfolders are created automatically on first upload.
 
 ## Compliance Target
 

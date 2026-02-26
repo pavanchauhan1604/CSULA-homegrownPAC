@@ -1,251 +1,146 @@
-# CSULA HomegrownPAC — Windows Installation & Run Guide
+﻿# CSULA HomegrownPAC - Windows Installation & Run Guide
 
-This guide walks you through a complete Windows setup (Python + dependencies + VeraPDF) and how to run the full workflow end-to-end.
+Setup is fully automated. On a fresh machine, three commands are all you need.
 
 > Email sending is **Windows-only** and uses **Outlook Desktop automation** (no SMTP).
 
 ---
 
-## 1) Prerequisites (Windows)
+## Prerequisites
 
-- Windows 10/11
-- Python **3.11+** (from python.org)
-- Git (optional but recommended)
-- **VeraPDF** desktop/CLI installed (required)
-- **Microsoft Outlook Desktop** installed + signed in (required only for sending emails)
+- **Windows 10 / 11**
+- **Git** -- to clone the repository (https://git-scm.com/)
+- **Microsoft OneDrive** signed in to your Cal State LA account, with the Teams channel *"PDF Accessibility Checker (PAC) - General"* synced (so the folder appears in File Explorer under OneDrive). Required for the setup script to auto-detect the upload path.
+- **Microsoft Outlook Desktop** installed and signed in -- required only when sending emails
 
----
-
-## 2) Install Python 3.11+
-
-1. Download Python for Windows: https://www.python.org/downloads/windows/
-2. Run the installer
-3. Important:
-   - ✅ Check **“Add python.exe to PATH”**
-   - ✅ Check **“pip”**
-
-Verify in PowerShell:
-
-```powershell
-python --version
-python -m pip --version
-```
+Everything else (Python, Java, VeraPDF, the virtual environment, and all Python packages) is installed automatically by `setup.ps1`.
 
 ---
 
-## 3) Get the project
+## First-Time Setup (New Machine)
 
-### Option A: Git clone (recommended)
+### Step 1 - Clone the repository
 
 ```powershell
-cd C:\Users\<you>\Work
 git clone https://github.com/pavanchauhan1604/CSULA-homegrownPAC.git
 cd CSULA-homegrownPAC
 ```
 
-### Option B: Download ZIP
-
-Download the repo ZIP from GitHub and extract it, then:
-
-```powershell
-cd C:\path\to\CSULA-homegrownPAC
-```
-
----
-
-## 4) Create and activate a virtual environment
-
-In PowerShell, from the repo root:
-
-```powershell
-python -m venv .venv
-```
-
-If PowerShell blocks activation, run once:
+### Step 2 - Allow PowerShell scripts (once per machine)
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-Activate:
+### Step 3 - Run the setup script
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+.\setup.ps1
 ```
 
-Upgrade pip:
+`setup.ps1` automatically:
+1. Installs **Python 3.11** via winget (if not already installed)
+2. Installs **Java 21 Temurin JDK** via winget (required by VeraPDF)
+3. Creates the `.venv` virtual environment inside the project folder
+4. Installs all Python packages from `requirements.txt`
+5. Creates all required `output/` and `temp/` subdirectories
+6. Downloads and silently installs **VeraPDF** from the official GitHub releases
+7. Writes the `VERAPDF_COMMAND` path into `config.py`
+8. Auto-detects the synced OneDrive Teams channel folder and writes `TEAMS_ONEDRIVE_PATH` into `config.py`
 
-```powershell
-python -m pip install --upgrade pip
-```
+> **Note:** If Python or Java were newly installed by the script (not already present), close the terminal, reopen it in the project root, and run `.\setup.ps1` again so the new PATH entries take effect. The script skips already-completed steps.
 
 ---
 
-## 5) Install Python dependencies
+## Running the Workflow
 
-Install everything via `requirements.txt`:
+All daily operations are run from the project root in PowerShell.
 
-```powershell
-python -m pip install -r requirements.txt
-```
-
-Quick verification:
+### Full pipeline (all 7 steps)
 
 ```powershell
-python -c "import scrapy, openpyxl, pikepdf, pandas, jinja2; print('Python deps OK')"
+.\scripts\run_workflow_smooth.ps1
 ```
 
-If you will send emails via Outlook automation, also verify:
+Runs: setup DB, generate spiders, crawl sites, analyze PDFs, build Excel reports, generate email HTML, print summary.
+
+### Send emails via Outlook Desktop
 
 ```powershell
-python -c "import win32com.client, pythoncom; print('pywin32 OK')"
+# Interactive (prompts for confirmation)
+.\scripts\send_emails.ps1
+
+# Skip confirmation prompt
+.\scripts\send_emails.ps1 -Force
 ```
+
+Outlook Desktop must be signed in before running this.
+
+### Check scan progress (while pipeline is running)
+
+```powershell
+.\scripts\check_progress.ps1
+```
+
+### Reset to a clean slate
+
+```powershell
+.\scripts\fresh_start.ps1
+```
+
+Backs up the database, then removes it along with all output files and generated spiders.
 
 ---
 
-## 6) Install VeraPDF (required)
+## Managing Domains
 
-1. Download VeraPDF for Windows: https://software.verapdf.org/
-2. Run `verapdf-installer.exe`
-3. **Important**: Ensure VeraPDF is on your system PATH.
-   - If you didn't add it to PATH during installation, you can configure it in `config.py`.
-   - Open `config.py` and find `VERAPDF_COMMAND`.
-   - Update it to point to your installation, e.g.:
-     ```python
-     VERAPDF_COMMAND = r"C:\Program Files\veraPDF\verapdf.bat"
-     # OR if you installed it in your user folder:
-     # VERAPDF_COMMAND = r"C:\Users\<your_user>\veraPDF\verapdf.bat"
-     ```
+Domains are read from **`data/sites.csv`** -- no code changes needed.
 
-Verify:
+To add or remove a domain, edit `data/sites.csv`:
 
-```powershell
-# If in PATH:
-verapdf --version
-
-# If configured in config.py, run the setup test:
-python test_setup.py
+```csv
+https://www.calstatela.edu/admissions,CSULA-content-manager_pchauha5
+https://www.calstatela.edu/financialaid,CSULA-content-manager_jsmith
 ```
+
+Each row is a full `https://` URL followed by the site's security group name. The system converts these to internal domain keys automatically.
 
 ---
 
-## 7) Configure the project (`config.py`)
+## Optional config.py Settings
 
-Edit `config.py` and set at least:
+`setup.ps1` writes `VERAPDF_COMMAND` and `TEAMS_ONEDRIVE_PATH` automatically. Other settings can be adjusted manually:
 
-- `TEST_DOMAINS` (start with 1 domain)
-- `USE_TEST_DOMAINS_ONLY = True` for first run
-- `TEST_EMAIL_RECIPIENT` (for generating email previews)
-
-Outlook sending options (Windows):
-
-- `EMAIL_DRY_RUN` — if `True`, do not send (safe testing)
-- `OUTLOOK_DISPLAY_ONLY` — if `True`, opens drafts for review instead of sending
-- `OUTLOOK_SENT_ON_BEHALF_OF` — set only if you have permission to send on behalf of a mailbox
+| Setting | Purpose |
+|---|---|
+| `TEST_EMAIL_RECIPIENT` | Email address for test/preview emails |
+| `EMAIL_DRY_RUN` | `True` = generate emails but do not send |
+| `OUTLOOK_DISPLAY_ONLY` | `True` = open drafts for review before sending |
+| `OUTLOOK_SENT_ON_BEHALF_OF` | Set only if you have Exchange delegate permissions |
+| `USE_TEST_DOMAINS_ONLY` | `True` = only scan `TEST_DOMAINS` (for development) |
 
 ---
 
-## 8) Run setup checks (recommended)
+## Troubleshooting
 
-From repo root:
-
-```powershell
-python test_setup.py
-```
-
-This checks core prerequisites (including VeraPDF availability).
-
----
-
-## 9) Run the full workflow (Windows)
-
-You have two options to run the workflow:
-
-### Option A: Using Git Bash (Recommended)
-If you have Git Bash installed (comes with Git for Windows), you can run the automated shell script:
-
-```bash
-bash scripts/run_workflow.sh
-```
-
-### Option B: Manual Python Steps (PowerShell)
-If you don't have Git Bash, run these commands sequentially in PowerShell:
-
-#### Step 0 — Setup database + test data
-
-```powershell
-python scripts\setup_test_environment.py
-```
-
-#### Step 1 — Generate spiders
-
-```powershell
-python config\generate_spiders.py
-```
-
-#### Step 2 — Crawl sites to discover PDFs
-
-```powershell
-cd crawlers\sf_state_pdf_scan
-python run_all_spiders.py
-cd ..\..\
-```
-
-#### Step 3 — Analyze PDFs with VeraPDF (build DB reports)
-
-```powershell
-python master_functions.py
-```
-
-#### Step 4 — Generate Excel reports
-
-```powershell
-python -c "from master_functions import build_all_xcel_reports; build_all_xcel_reports()"
-```
-
-#### Step 5 — Generate email HTML previews
-
-```powershell
-python scripts\generate_emails.py
-```
-
-Outputs:
-- Excel reports: `output\scans\...\*.xlsx`
-- Email previews: `output\emails\*.html`
-
----
-
-## 10) Send emails (Windows + Outlook Desktop)
-
-1. Ensure Outlook Desktop is installed and you can send mail normally.
-2. Keep Outlook open (recommended for first run).
-3. From repo root:
-
-```powershell
-python scripts\send_emails.py
-```
-
-Tips:
-- Set `EMAIL_DRY_RUN = True` first to validate generation without sending.
-- Set `OUTLOOK_DISPLAY_ONLY = True` to review drafts before sending.
-
----
-
-## Troubleshooting (Windows)
-
-### PowerShell: “running scripts is disabled”
-Run:
-
+### "running scripts is disabled" in PowerShell
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-### `verapdf` not found
-- Confirm it’s installed
-- Confirm PATH contains the VeraPDF directory
-- Or set `VERAPDF_COMMAND` to the full path in `config.py`
+### Python or Java not found after running setup.ps1
+Close the terminal, reopen it in the project root, and run `.\setup.ps1` again.
+
+### VeraPDF not found / VERAPDF_COMMAND wrong
+Re-run `.\setup.ps1` -- it will re-detect and rewrite the path. Or set it manually in `config.py`:
+```python
+VERAPDF_COMMAND = r"C:\Users\<you>\veraPDF\verapdf.bat"
+```
+
+### OneDrive path not detected
+Make sure you are signed in to OneDrive with your Cal State LA account and that the *"PDF Accessibility Checker (PAC) - General"* Teams channel is synced (visible in File Explorer under OneDrive). Then re-run `.\setup.ps1`.
 
 ### Outlook sending errors
-- Verify Outlook Desktop is signed in
-- Verify the account has permission for `OUTLOOK_SENT_ON_BEHALF_OF` (if used)
-- Try `OUTLOOK_DISPLAY_ONLY = True` to debug drafts interactively
+- Verify Outlook Desktop is open and signed in
+- Verify the account has permission for `OUTLOOK_SENT_ON_BEHALF_OF` (if configured)
+- Set `OUTLOOK_DISPLAY_ONLY = True` in `config.py` to open drafts interactively for debugging
