@@ -1,8 +1,5 @@
 import sqlite3
 import csv
-# Define the connection and cursor
-conn = sqlite3.connect('drupal_pdfs.db')
-cursor = conn.cursor()
 
 # Define SQL commands to create three tables
 create_pdf_table = """
@@ -104,8 +101,6 @@ CREATE TABLE IF NOT EXISTS failure (
 # # Commit the changes and close the connection
 # conn.commit()
 # conn.close()
-
-print("Database and tables created successfully.")
 
 
 

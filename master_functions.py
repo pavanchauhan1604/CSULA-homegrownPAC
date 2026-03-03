@@ -3,7 +3,6 @@ from datetime import datetime
 
 from src.core.conformance_checker import full_pdf_scan, refresh_existing_pdf_reports, single_site_pdf_scan
 from src.data_management.data_export import get_pdf_reports_by_site_name, get_all_sites, write_data_to_excel, get_site_failures
-from src.core.database import create_pdf_report
 from src.core.filters import check_for_node, is_high_priority
 from src.core.scan_refresh import refresh_status
 from src.utilities.tools import mark_pdfs_as_removed
