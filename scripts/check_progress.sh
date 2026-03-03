@@ -6,7 +6,7 @@ echo "📊 PDF Analysis Progress Report"
 echo "============================================================"
 echo ""
 
-cd /Users/pavan/Work/CSULA-homegrownPAC
+cd "$(dirname "$0")/.."
 
 # Count total PDFs found
 TOTAL_PDFS=$(sqlite3 drupal_pdfs.db "SELECT COUNT(*) FROM drupal_pdf_files;")

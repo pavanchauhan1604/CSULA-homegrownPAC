@@ -42,10 +42,11 @@ echo "🕷️  Regenerating spider files..."
     echo "   ⚠️  Spider generation had errors (see above). Continuing fresh start..."
 }
 
-# Backup existing database (just in case)
+# Backup existing database (single overwriting backup in temp/)
 if [ -f "drupal_pdfs.db" ]; then
     echo "💾 Backing up existing database..."
-    cp drupal_pdfs.db "drupal_pdfs.db.backup.$(date +%Y%m%d_%H%M%S)"
+    mkdir -p temp
+    cp drupal_pdfs.db temp/drupal_pdfs.db.backup
 fi
 
 # Delete database

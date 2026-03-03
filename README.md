@@ -61,6 +61,17 @@ CSULA-homegrownPAC/
 
 ### First time on a new machine
 
+**Step 1 — Install VeraPDF manually** (required before running setup)
+
+> `setup.ps1` will auto-detect VeraPDF and configure the path for you, but it cannot run the VeraPDF installer silently due to Windows permission restrictions. Install it once, manually:
+
+1. Go to **https://verapdf.org/software/** and download the Windows installer ZIP
+2. Extract the ZIP and run **`verapdf-install.bat`** inside the extracted folder
+3. When prompted for an install location, choose a folder you own, e.g.:
+   `C:\Users\<YourName>\AppData\Local\Programs\veraPDF`
+
+**Step 2 — Clone repo and run setup**
+
 ```powershell
 # 1. Clone and enter repo
 git clone https://github.com/pavanchauhan1604/CSULA-homegrownPAC.git
@@ -72,9 +83,12 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 # 3. If you downloaded a ZIP instead of git clone, unblock the scripts first
 Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
 
-# 4. Run automated setup (installs Python, Java, VeraPDF, venv, packages, configures paths)
+# 4. Run automated setup (installs Python 3.11, Java 21, creates venv, installs packages,
+#    auto-detects VeraPDF path, configures config.py)
 .\setup.ps1
 ```
+
+> `setup.ps1` will print `[!] VeraPDF not found` if it can't locate the install — re-run it after completing the VeraPDF install above.
 
 > See [setup/WINDOWS_INSTALLATION_GUIDE.md](setup/WINDOWS_INSTALLATION_GUIDE.md) for full details and troubleshooting.
 
@@ -139,7 +153,7 @@ python scripts/historical_analysis.py --no-upload
 
 - Python 3.11+ (auto-installed by `setup.ps1`)
 - Java 21+ (auto-installed by `setup.ps1`, required for VeraPDF)
-- VeraPDF (auto-downloaded and installed by `setup.ps1`)
+- VeraPDF (**manual install required** — see Quick Start Step 1; `setup.ps1` auto-detects the path and writes it to `config.py`)
 - SQLite
 - Libraries: scrapy, pikepdf, pdfminer.six, openpyxl, jinja2, beautifulsoup4, requests (all installed from `requirements.txt` by `setup.ps1`)
 

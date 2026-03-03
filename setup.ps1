@@ -221,6 +221,7 @@ $dirs = @(
     "output\reports",
     "output\emails\sent",
     "output\emails\outlook_msg",
+    "output\email_templates",
     "output\backups",
     "output\scans",
     "output\logs",

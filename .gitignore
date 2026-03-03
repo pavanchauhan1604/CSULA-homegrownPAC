@@ -13,7 +13,6 @@ ENV/
 *.db
 *.sqlite
 *.sqlite3
-*.db.backup.*
 
 # IDE
 .idea/
@@ -25,6 +24,7 @@ ENV/
 # Temp files
 temp/*.pdf
 temp/*.json
+temp/*.backup
 
 # Output files (generated — do not track)
 output/reports/*.xlsx
@@ -38,7 +38,7 @@ output/scans/**
 
 # Keep empty output folders and the email template in git
 !output/**/.gitkeep
-!output/emails/email_template.html
+!output/email_templates/email_template.html
 
 # OS files
 .DS_Store
