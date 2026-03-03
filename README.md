@@ -86,6 +86,9 @@ Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
 # 4. Run automated setup (installs Python 3.11, Java 21, creates venv, installs packages,
 #    auto-detects VeraPDF path, configures config.py)
 .\setup.ps1
+
+# 5. Activate the virtual environment (required before running python commands)
+.\.venv\Scripts\Activate.ps1
 ```
 
 > `setup.ps1` will print `[!] VeraPDF not found` if it can't locate the install — re-run it after completing the VeraPDF install above.
@@ -119,6 +122,9 @@ https://www.calstatela.edu/financialaid,CSULA-content-manager_jsmith
 
 ### Upload Reports to Teams (OneDrive)
 ```powershell
+# Activate the virtual environment
+.\.venv\Scripts\Activate.ps1
+
 # Copies the latest Excel report for each domain into the synced Teams channel folder
 python scripts/teams_upload.py
 
@@ -128,6 +134,9 @@ python scripts/teams_upload.py --domains www.calstatela.edu_admissions
 
 ### Generate Historical Analysis Dashboards
 ```powershell
+# Activate the virtual environment
+.\.venv\Scripts\Activate.ps1
+
 # Generate per-domain HTML trend dashboards from all timestamped reports in OneDrive
 python scripts/historical_analysis.py
 
