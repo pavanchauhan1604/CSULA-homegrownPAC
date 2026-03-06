@@ -149,7 +149,7 @@ def create_html_email_summary(data):
 def template_email(data_dict):
 
     template_path = str(config.EMAIL_TEMPLATE_PATH)
-    with open(template_path, "r") as file:
+    with open(template_path, "r", encoding="utf-8-sig") as file:
         email_template = file.read()
         formatted_template = email_template.format(**data_dict)
         return formatted_template
