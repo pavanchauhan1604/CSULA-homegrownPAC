@@ -110,11 +110,23 @@ def create_html_email_summary(data):
         display_domain = _display_domain(domain)
 
         unique_count = len({p.get("pdf_uri") for p in pdfs if p.get("pdf_uri")})
-            
-        # Count by priority
-        high_count = sum(1 for p in pdfs if p["priority_level"] == "high")
-        medium_count = sum(1 for p in pdfs if p["priority_level"] == "medium")
-        low_count = sum(1 for p in pdfs if p["priority_level"] == "low")
+
+        # Deduplicate by pdf_uri, keeping the highest priority per unique file
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        unique_pdfs_by_uri = {}
+        for p in pdfs:
+            uri = p.get("pdf_uri")
+            if not uri:
+                continue
+            existing = unique_pdfs_by_uri.get(uri)
+            if existing is None or priority_order[p["priority_level"]] < priority_order[existing["priority_level"]]:
+                unique_pdfs_by_uri[uri] = p
+        unique_pdfs = list(unique_pdfs_by_uri.values())
+
+        # Count by priority from unique files only
+        high_count = sum(1 for p in unique_pdfs if p["priority_level"] == "high")
+        medium_count = sum(1 for p in unique_pdfs if p["priority_level"] == "medium")
+        low_count = sum(1 for p in unique_pdfs if p["priority_level"] == "low")
         
         # Domain summary box
         html += f'''
