@@ -32,8 +32,8 @@ CSULA-homegrownPAC/
 │   └── utilities/               # Helper utilities
 │       └── tools.py             # Utility functions
 ├── scripts/                     # Automation scripts
-│   ├── send_emails.py           # Email sending script (Outlook - Windows)
-│   ├── teams_upload.py          # Copy Excel reports to Teams via OneDrive sync
+│   ├── sharepoint_sync.py       # Sync Excel to OneDrive + generate email drafts (no DB)
+│   ├── send_emails.py           # Send pre-generated drafts via Outlook COM (Windows)
 │   └── historical_analysis.py  # Per-domain HTML trend dashboards
 ├── crawlers/                    # Web scraping
 │   └── sf_state_pdf_scan/       # Scrapy project
@@ -98,11 +98,17 @@ Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
 ### Daily workflow
 
 ```powershell
-# Run the full pipeline (crawl -> analyze -> Excel reports -> email HTML)
+# Step 1 — Run the full pipeline (crawl -> analyze -> generate Excel reports)
 .\scripts\run_workflow_smooth.ps1
 
-# Send emails via Outlook Desktop
-.\scripts\send_emails.ps1 -Force
+# Step 2 — Sync Excel reports to OneDrive/SharePoint + generate personalised email drafts
+#           Drafts are saved as {employee_id}_draft.html in each domain's OneDrive folder.
+#           No database access required from this point on.
+python scripts/sharepoint_sync.py
+
+# Step 3 — Review the HTML drafts in the OneDrive domain folders, then send when ready
+python scripts/send_emails.py          # prompts for confirmation
+python scripts/send_emails.py --force  # skips confirmation
 
 # Check scan progress while pipeline is running
 .\scripts\check_progress.ps1
@@ -120,17 +126,21 @@ https://www.calstatela.edu/admissions,CSULA-content-manager_pchauha5
 https://www.calstatela.edu/financialaid,CSULA-content-manager_jsmith
 ```
 
-### Upload Reports to Teams (OneDrive)
+### Sync to SharePoint/Teams and generate email drafts
 ```powershell
 # Activate the virtual environment
 .\.venv\Scripts\Activate.ps1
 
-# Copies the latest Excel report for each domain into the synced Teams channel folder
-python scripts/teams_upload.py
+# Sync all domains: copies Excel to OneDrive + writes {employee_id}_draft.html per domain folder
+python scripts/sharepoint_sync.py
 
-# Upload specific domains only
-python scripts/teams_upload.py --domains www.calstatela.edu_admissions
+# Sync specific domains only
+python scripts/sharepoint_sync.py --domains www.calstatela.edu_admissions
 ```
+
+Each domain folder in OneDrive will contain:
+- The latest timestamped Excel report
+- One `{employee_id}_draft.html` per assigned employee (overwritten on every run)
 
 ### Generate Historical Analysis Dashboards
 ```powershell
@@ -156,7 +166,8 @@ python scripts/historical_analysis.py --no-upload
 - **Email Automation**: Windows Outlook desktop automation (no SMTP)
 - **404 Tracking**: Monitors broken links and removed PDFs
 - **Duplicate Detection**: SHA-256 hashing prevents redundant testing
-- **Teams/OneDrive Integration**: Copies Excel reports into the synced Teams channel folder; generates per-domain HTML trend dashboards comparing all historical timestamped scans
+- **SharePoint/OneDrive Integration**: Syncs Excel reports to the Teams channel folder and generates personalised HTML email drafts per employee — no database required for the send step
+- **Historical Dashboards**: Per-domain Chart.js trend dashboards comparing all timestamped scans
 
 ## Requirements
 

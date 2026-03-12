@@ -106,32 +106,6 @@ Write-Host "Step 5 complete."
 Write-Host ""
 
 # ---------------------------------------------------------------------------
-# Step 6: Generate Email Reports
-# ---------------------------------------------------------------------------
-Write-Host "============================================================"
-Write-Host "STEP 6: Generate Email Reports"
-Write-Host "============================================================"
-& $PYTHON -c @"
-import sys, os
-sys.path.insert(0, 'src/communication')
-print('Importing modules...')
-from communications import build_emails
-print('Generating email reports...')
-emails = build_emails()
-os.makedirs('output/emails', exist_ok=True)
-for idx, item in enumerate(emails, 1):
-    email_html, recipient, attachments = item[0], item[1], item[2]
-    safe = recipient.replace(chr(64), '_at_').replace('.', '_')
-    filename = f'output/emails/email_{idx}_{safe}.html'
-    with open(filename, 'w') as f:
-        f.write(email_html)
-    print(f'  Saved: {filename}')
-print('Email reports complete!')
-"@
-Write-Host "Step 6 complete."
-Write-Host ""
-
-# ---------------------------------------------------------------------------
 # Step 7: Results Summary
 # ---------------------------------------------------------------------------
 Write-Host "============================================================"
