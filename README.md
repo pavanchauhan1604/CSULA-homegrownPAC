@@ -98,13 +98,8 @@ Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
 ### Daily workflow
 
 ```powershell
-# Step 1 — Run the full pipeline (crawl -> analyze -> generate Excel reports)
-.\scripts\run_workflow_smooth.ps1
-
-# Step 2 — Sync Excel reports to OneDrive/SharePoint + generate personalised email drafts
-#           Drafts are saved as {employee_id}_draft.html in each domain's OneDrive folder.
-#           No database access required from this point on.
-python scripts/sharepoint_sync.py
+# Run the full pipeline then immediately sync to OneDrive + generate email drafts
+.\scripts\run_workflow_smooth.ps1 && python scripts/sharepoint_sync.py
 
 # Step 3 — Review the HTML drafts in the OneDrive domain folders, then send when ready
 python scripts/send_emails.py          # prompts for confirmation
