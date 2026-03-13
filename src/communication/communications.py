@@ -150,6 +150,9 @@ def create_html_email_summary(data):
                     <strong>Low Priority:</strong> {low_count} PDFs
                 </p>
             </div>
+            <p style="margin: 15px 0 0 0; font-size: 14px; color: #555;">
+                <strong>Note:</strong> High priority PDFs require <strong>immediate remediation</strong> — they violate core WCAG success criteria that make content fundamentally inaccessible to users with disabilities.
+            </p>
         </div>
         '''
     
