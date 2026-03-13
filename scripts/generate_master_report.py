@@ -57,24 +57,29 @@ def folder_to_display_name(folder_name: str) -> str:
 
 
 def count_pdfs(pdf_rows: list) -> tuple[int, int]:
-    """Return (total_unique, high_priority_count) from Unique PDFs sheet rows."""
+    """Return (total_unique, high_priority_count) from Unique PDFs sheet rows.
+
+    pdf_uri cells are stored as =HYPERLINK(...) formulas in the Excel.  When the
+    file has never been opened in Microsoft Excel the cached value is None and
+    data_only=True returns None for those cells.  Use 'fingerprint' (a plain-text
+    column) as the dedup key so counts are always correct.
+    """
     priority_order = {"high": 0, "medium": 1, "low": 2}
 
-    # Deduplicate by pdf_uri keeping highest priority per URI
+    # Deduplicate by fingerprint (plain text, never a formula).
+    # Fall back to row index so every row still counts even if fingerprint is absent.
     unique: dict[str, dict] = {}
-    for row in pdf_rows:
-        uri = str(row.get("pdf_uri") or row.get("PDF URI") or "").strip()
-        if not uri:
-            continue
+    for idx, row in enumerate(pdf_rows):
+        key = str(row.get("fingerprint") or "").strip() or f"__row_{idx}"
         try:
             pdata = row_to_priority_data(row)
             level, _, _ = get_priority_level(pdata)
         except Exception:
             level = "low"
 
-        existing = unique.get(uri)
+        existing = unique.get(key)
         if existing is None or priority_order[level] < priority_order[existing["level"]]:
-            unique[uri] = {"level": level}
+            unique[key] = {"level": level}
 
     total = len(unique)
     high = sum(1 for v in unique.values() if v["level"] == "high")
