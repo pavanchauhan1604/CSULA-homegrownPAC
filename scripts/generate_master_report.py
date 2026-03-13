@@ -123,6 +123,9 @@ def main():
         rows.append((display, total, high))
         print(f"  [OK] {display}: {total} unique PDFs, {high} high priority")
 
+    # Sort by high priority PDFs descending
+    rows.sort(key=lambda x: x[2], reverse=True)
+
     # Build workbook
     wb = openpyxl.Workbook()
     ws = wb.active
