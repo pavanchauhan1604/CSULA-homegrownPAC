@@ -104,7 +104,11 @@ def load_domain_security_groups(csv_path: Path) -> dict:
                 continue
             domain_key = config._url_to_domain_key(row[0])
             if len(row) > 1:
-                result[domain_key] = row[1].strip()
+                group = row[1].strip()
+                result[domain_key] = group
+                # Also store without leading "www." so both forms match
+                if domain_key.startswith("www."):
+                    result[domain_key[4:]] = group
     return result
 
 
