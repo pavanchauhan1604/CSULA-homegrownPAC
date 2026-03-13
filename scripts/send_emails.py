@@ -64,9 +64,21 @@ def load_employees(csv_path: Path) -> dict:
 
 
 def find_latest_xlsx(folder: Path):
-    """Return the most recently modified .xlsx in folder (ignoring ~$ lock files)."""
+    """Return the .xlsx with the latest timestamp in its filename (ignoring ~$ lock files).
+
+    Sorts by the YYYY-MM-DD_HH-MM-SS timestamp embedded in the filename so that
+    OneDrive sync order / file mtime quirks don't pick the wrong file.
+    Falls back to mtime for any file that lacks a timestamp in its name.
+    """
+    import re
+    _TS_RE = re.compile(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", re.IGNORECASE)
+
+    def _sort_key(p: Path):
+        m = _TS_RE.search(p.name)
+        return m.group(1) if m else ""
+
     candidates = [p for p in folder.glob("*.xlsx") if not p.name.startswith("~$")]
-    return max(candidates, key=lambda p: p.stat().st_mtime) if candidates else None
+    return max(candidates, key=_sort_key) if candidates else None
 
 
 def folder_to_domain_display(folder_name: str) -> str:
