@@ -1,24 +1,29 @@
 """Sync Excel reports to OneDrive/SharePoint and generate HTML email drafts.
 
-This script replaces teams_upload.py. It does two things per domain:
+Runs in two phases:
 
-  1. Copy the latest local Excel report → OneDrive/{domain-folder}/
-     (OneDrive syncs this to Teams automatically — no API needed)
+  Phase 1 — Sync (optional):
+    For each domain in config.DOMAINS (or --domains filter), if a newer local
+    Excel exists it is copied to the corresponding OneDrive folder.
+    If there is no local Excel the domain is skipped with [NO LOCAL].
 
-  2. Read the 'Unique PDFs' sheet from that Excel + employee CSVs,
-     generate a personalised HTML email draft per (employee × domain),
-     and save it as {employee_id}_draft.html in the same OneDrive folder.
-     The file is overwritten on every run so it always reflects the latest scan.
+  Phase 2 — Draft generation:
+    Iterates over EVERY folder already present in the OneDrive directory.
+    Reads whatever Excel is already there (just synced or from a previous run)
+    and writes/overwrites one HTML email draft per assigned employee.
+
+This means that on a fresh start (no local Excels yet) Phase 1 produces nothing
+to sync but Phase 2 still regenerates all drafts from the existing OneDrive files.
 
 The send_emails.py script reads these drafts to send via Outlook COM.
 No database access is required by either script.
 
 Usage
 -----
-    # Sync all configured domains:
+    # Full run (sync + regenerate all drafts):
     python scripts/sharepoint_sync.py
 
-    # Sync specific domains only:
+    # Limit sync phase to specific domains (draft phase still covers all folders):
     python scripts/sharepoint_sync.py --domains www.calstatela.edu_admissions
 """
 
@@ -226,27 +231,59 @@ def build_domain_data_for_email(domain: str, pdf_rows: list) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Core per-domain sync
+# Helpers
 # ---------------------------------------------------------------------------
 
-def sync_domain(
-    domain: str,
-    onedrive_path: Path,
-    employees: dict,
-    assignments: dict,
-    domain_groups: dict,
-) -> bool:
-    """Sync one domain: copy Excel to OneDrive and write email drafts.
+import re as _re
+from datetime import datetime as _dt
 
-    Returns True if the Excel was found and copied, False if skipped.
+_TS_RE = _re.compile(r"(\d{4}-\d{2}-\d{2})_\d{2}-\d{2}-\d{2}\.xlsx$", _re.IGNORECASE)
+_TS_SORT_RE = _re.compile(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", _re.IGNORECASE)
+
+
+def _find_latest_xlsx(folder: Path) -> Path | None:
+    """Return the most recent .xlsx in *folder* sorted by filename timestamp."""
+    def _key(p: Path):
+        m = _TS_SORT_RE.search(p.name)
+        return m.group(1) if m else ""
+    candidates = [p for p in folder.glob("*.xlsx") if not p.name.startswith("~$")]
+    return max(candidates, key=_key) if candidates else None
+
+
+def _xlsx_report_date(xlsx_path: Path) -> str:
+    """Extract a human-readable date from an Excel filename timestamp."""
+    m = _TS_RE.search(xlsx_path.name)
+    if m:
+        return _dt.strptime(m.group(1), "%Y-%m-%d").strftime("%B %d, %Y")
+    return xlsx_path.stem
+
+
+def _folder_to_domain_key(folder_name: str) -> str:
+    """Convert an OneDrive folder name back to a domain key.
+
+    e.g. 'www-calstatela-edu_admissions' -> 'www.calstatela.edu_admissions'
+    Only the part before the first '_' has dashes converted to dots.
     """
-    # 1. Find latest local Excel report
+    if "_" in folder_name:
+        domain_part, rest = folder_name.split("_", 1)
+        return f"{domain_part.replace('-', '.')}_{rest}"
+    return folder_name.replace("-", ".")
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 — Sync local Excel → OneDrive
+# ---------------------------------------------------------------------------
+
+def sync_excel_to_onedrive(domain: str, onedrive_path: Path) -> bool:
+    """Copy the latest local Excel for *domain* to its OneDrive folder.
+
+    Returns True if a file was copied, False if no local Excel was found.
+    """
     xlsx_path = config.get_excel_report_path(domain, prefer_latest=True)
     if not xlsx_path or not Path(xlsx_path).exists():
-        print(f"  [SKIP] No local Excel report found for: {domain}")
+        print(f"  [NO LOCAL] {domain}")
         return False
 
-    # 2. Copy Excel → OneDrive domain folder
     folder_name = config.get_domain_folder_name(domain)
     dest_folder = onedrive_path / folder_name
     dest_folder.mkdir(parents=True, exist_ok=True)
@@ -254,17 +291,39 @@ def sync_domain(
     dest_xlsx = dest_folder / xlsx_path.name
     shutil.copy2(xlsx_path, dest_xlsx)
     print(f"  [SYNC] {xlsx_path.name} → .../{folder_name}/")
+    return True
 
-    # 3. Read 'Unique PDFs' sheet
+
+# ---------------------------------------------------------------------------
+# Phase 2 — Generate drafts from OneDrive folder
+# ---------------------------------------------------------------------------
+
+def generate_drafts_for_folder(
+    folder: Path,
+    employees: dict,
+    assignments: dict,
+    domain_groups: dict,
+) -> bool:
+    """Generate email drafts for a single OneDrive domain folder.
+
+    Reads the latest Excel already present in the folder (just synced or from a
+    previous run) and writes one HTML draft per assigned employee.
+    Returns True if at least one draft was written.
+    """
+    xlsx_path = _find_latest_xlsx(folder)
+    if not xlsx_path:
+        print(f"  [SKIP] No Excel in OneDrive folder: {folder.name}")
+        return False
+
     pdf_rows = read_unique_pdfs_sheet(xlsx_path)
     if not pdf_rows:
-        print(f"  [WARN] 'Unique PDFs' sheet is empty for {domain} — no drafts generated")
+        print(f"  [WARN] 'Unique PDFs' sheet is empty — no drafts generated")
         return True
 
-    # 4. Resolve security group → employee IDs
-    # Prefer sites.csv mapping; fall back to security_group_name column in Excel.
-    security_group = domain_groups.get(domain, "")
-    if not security_group and pdf_rows:
+    # Resolve security group: prefer sites.csv, fall back to Excel column
+    domain_key = _folder_to_domain_key(folder.name)
+    security_group = domain_groups.get(domain_key, "")
+    if not security_group:
         security_group = str(pdf_rows[0].get("security_group_name") or "").strip()
 
     employee_ids = assignments.get(security_group, [])
@@ -272,22 +331,15 @@ def sync_domain(
         print(f"  [WARN] No employees for security group '{security_group}' — no drafts generated")
         return True
 
-    # 5. Build shared PDF summary (same content for all employees on this domain)
-    domain_data = build_domain_data_for_email(domain, pdf_rows)
+    domain_data = build_domain_data_for_email(domain_key, pdf_rows)
     html_summary = create_html_email_summary(domain_data)
-    display = _display_domain(domain)
+    display = _display_domain(domain_key)
+    report_date = _xlsx_report_date(xlsx_path)
 
-    # Extract scan date from the Excel filename (e.g. "...-2026-02-19_15-02-27.xlsx" → "February 19, 2026")
-    import re as _re
-    from datetime import datetime as _dt
-    _ts_match = _re.search(r"(\d{4}-\d{2}-\d{2})_\d{2}-\d{2}-\d{2}\.xlsx$", xlsx_path.name, _re.IGNORECASE)
-    if _ts_match:
-        report_date = _dt.strptime(_ts_match.group(1), "%Y-%m-%d").strftime("%B %d, %Y")
-    else:
-        report_date = xlsx_path.stem  # fallback: use filename stem
-
-    # 6. Write one draft per employee
+    drafts_folder = folder / "Mail Drafts"
+    drafts_folder.mkdir(exist_ok=True)
     drafts_written = 0
+
     for employee_id in employee_ids:
         employee = employees.get(employee_id)
         if not employee:
@@ -301,14 +353,12 @@ def sync_domain(
             "report_date": report_date,
         })
 
-        drafts_folder = dest_folder / "Mail Drafts"
-        drafts_folder.mkdir(exist_ok=True)
         draft_path = drafts_folder / f"{employee_id}_draft.html"
         draft_path.write_text(email_html, encoding="utf-8")
         drafts_written += 1
 
-    print(f"  [OK] {drafts_written} email draft(s) saved to .../{folder_name}/ ({display})")
-    return True
+    print(f"  [OK] {drafts_written} draft(s) → .../{folder.name}/Mail Drafts/ ({display})")
+    return drafts_written > 0
 
 
 # ---------------------------------------------------------------------------
@@ -339,11 +389,11 @@ def main() -> None:
         "--domains",
         nargs="+",
         metavar="DOMAIN",
-        help="Domain(s) to process. Defaults to all domains in config.DOMAINS.",
+        help="Limit the sync phase to these domain(s). Draft generation always covers all OneDrive folders.",
     )
     args = parser.parse_args()
 
-    domains = args.domains or config.DOMAINS
+    sync_domains = args.domains or config.DOMAINS
 
     # Load CSVs once
     employees = load_employees(config.EMPLOYEES_CSV)
@@ -353,23 +403,36 @@ def main() -> None:
     print(f"OneDrive folder : {onedrive_path}")
     print(f"Employees loaded: {len(employees)}")
     print(f"Assignments     : {sum(len(v) for v in assignments.values())} total across {len(assignments)} group(s)")
-    print(f"Processing      : {len(domains)} domain(s)\n")
 
-    successes = failures = 0
-    for domain in domains:
-        print(f"▶ {domain}")
+    # ── Phase 1: Sync local Excels → OneDrive ────────────────────────────────
+    print(f"\n── Phase 1: Sync ({len(sync_domains)} domain(s)) ──")
+    synced = 0
+    for domain in sync_domains:
+        if sync_excel_to_onedrive(domain, onedrive_path):
+            synced += 1
+    print(f"Synced {synced} / {len(sync_domains)} domain(s).\n")
+
+    # ── Phase 2: Generate drafts for every OneDrive folder ───────────────────
+    onedrive_folders = sorted(
+        f for f in onedrive_path.iterdir()
+        if f.is_dir() and not f.name.startswith(".")
+    )
+    print(f"── Phase 2: Generate drafts ({len(onedrive_folders)} folder(s) in OneDrive) ──")
+    drafts_ok = drafts_skipped = 0
+    for folder in onedrive_folders:
+        print(f"▶ {folder.name}")
         try:
-            if sync_domain(domain, onedrive_path, employees, assignments, domain_groups):
-                successes += 1
+            if generate_drafts_for_folder(folder, employees, assignments, domain_groups):
+                drafts_ok += 1
             else:
-                failures += 1
+                drafts_skipped += 1
         except Exception as exc:
             print(f"  [ERROR] {exc}")
-            failures += 1
+            drafts_skipped += 1
         print()
 
     print("─" * 55)
-    print(f"Done.  Synced: {successes}  |  Skipped / failed: {failures}")
+    print(f"Done.  Synced: {synced}  |  Drafts written: {drafts_ok}  |  Skipped: {drafts_skipped}")
     print("OneDrive will sync new files to Teams in the background.")
 
 
