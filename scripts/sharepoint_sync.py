@@ -277,6 +277,15 @@ def sync_domain(
     html_summary = create_html_email_summary(domain_data)
     display = _display_domain(domain)
 
+    # Extract scan date from the Excel filename (e.g. "...-2026-02-19_15-02-27.xlsx" → "February 19, 2026")
+    import re as _re
+    from datetime import datetime as _dt
+    _ts_match = _re.search(r"(\d{4}-\d{2}-\d{2})_\d{2}-\d{2}-\d{2}\.xlsx$", xlsx_path.name, _re.IGNORECASE)
+    if _ts_match:
+        report_date = _dt.strptime(_ts_match.group(1), "%Y-%m-%d").strftime("%B %d, %Y")
+    else:
+        report_date = xlsx_path.stem  # fallback: use filename stem
+
     # 6. Write one draft per employee
     drafts_written = 0
     for employee_id in employee_ids:
@@ -289,6 +298,7 @@ def sync_domain(
             "employee_first_name": employee["first_name"],
             "employee_full_name": f"{employee['first_name']} {employee['last_name']}".strip(),
             "pdf_data_table": html_summary,
+            "report_date": report_date,
         })
 
         drafts_folder = dest_folder / "Mail Drafts"
