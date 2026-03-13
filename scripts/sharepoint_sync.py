@@ -291,7 +291,9 @@ def sync_domain(
             "pdf_data_table": html_summary,
         })
 
-        draft_path = dest_folder / f"{employee_id}_draft.html"
+        drafts_folder = dest_folder / "Mail Drafts"
+        drafts_folder.mkdir(exist_ok=True)
+        draft_path = drafts_folder / f"{employee_id}_draft.html"
         draft_path.write_text(email_html, encoding="utf-8")
         drafts_written += 1
 

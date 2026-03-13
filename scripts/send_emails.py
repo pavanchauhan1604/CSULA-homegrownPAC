@@ -3,7 +3,7 @@
 
 Each domain folder in OneDrive contains:
   - The latest Excel report  ({domain}-{timestamp}.xlsx)
-  - One draft per assigned employee  ({employee_id}_draft.html)
+  - Mail Drafts/{employee_id}_draft.html  (one per assigned employee)
 
 This script discovers every draft, looks up the recipient email from
 employees.csv, attaches the latest Excel from the same domain folder,
@@ -98,7 +98,10 @@ def discover_emails(onedrive_path: Path, employees: dict) -> list:
         if not domain_folder.is_dir():
             continue
 
-        draft_files = sorted(domain_folder.glob("*_draft.html"))
+        drafts_folder = domain_folder / "Mail Drafts"
+        if not drafts_folder.is_dir():
+            continue
+        draft_files = sorted(drafts_folder.glob("*_draft.html"))
         if not draft_files:
             continue
 
