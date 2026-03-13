@@ -158,16 +158,16 @@ def create_html_email_summary(data):
                     </tr>
                 </thead>
                 <tbody>
-                    <tr style="background-color: #fff0f0;">
-                        <td style="padding: 6px 10px;"><span style="display: inline-block; width: 14px; height: 14px; background-color: #8B0000; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span><strong>High</strong></td>
+                    <tr>
+                        <td style="padding: 6px 10px;"><strong>High</strong></td>
                         <td style="padding: 6px 10px;">Violates core WCAG criteria — content is fundamentally inaccessible. <strong>Immediate remediation required.</strong></td>
                     </tr>
-                    <tr style="background-color: #fff8f0;">
-                        <td style="padding: 6px 10px;"><span style="display: inline-block; width: 14px; height: 14px; background-color: #FF8C00; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span><strong>Medium</strong></td>
+                    <tr>
+                        <td style="padding: 6px 10px;"><strong>Medium</strong></td>
                         <td style="padding: 6px 10px;">Significant accessibility barriers present. Should be remediated.</td>
                     </tr>
-                    <tr style="background-color: #f0fff0;">
-                        <td style="padding: 6px 10px;"><span style="display: inline-block; width: 14px; height: 14px; background-color: #006400; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span><strong>Low</strong></td>
+                    <tr>
+                        <td style="padding: 6px 10px;"><strong>Low</strong></td>
                         <td style="padding: 6px 10px;">Satisfies core WCAG criteria. Minor errors only — no immediate action needed.</td>
                     </tr>
                 </tbody>
