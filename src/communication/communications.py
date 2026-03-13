@@ -135,7 +135,6 @@ def create_html_email_summary(data):
                 {display_domain}
             </h2>
             <div style="font-size: 16px; line-height: 1.8;">
-                <p style="margin: 5px 0;"><strong>Total PDFs Found:</strong> {len(pdfs)}</p>
                 <p style="margin: 5px 0;"><strong>Unique PDFs:</strong> {unique_count}</p>
                 <p style="margin: 5px 0;">
                     <span style="display: inline-block; width: 20px; height: 20px; background-color: #8B0000; margin-right: 8px; vertical-align: middle;"></span>
