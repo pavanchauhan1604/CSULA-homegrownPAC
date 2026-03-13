@@ -85,9 +85,10 @@ def folder_to_domain_display(folder_name: str) -> str:
 # Draft discovery
 # ---------------------------------------------------------------------------
 
-def discover_emails(onedrive_path: Path, employees: dict) -> list:
+def discover_emails(onedrive_path: Path, employees: dict, domain_folders: set | None = None) -> list:
     """Scan OneDrive domain folders for *_draft.html files.
 
+    *domain_folders* is an optional set of folder names to restrict to.
     Returns a list of 4-tuples:
         (html_content, recipient_email, [attachments], subject)
     """
@@ -96,6 +97,8 @@ def discover_emails(onedrive_path: Path, employees: dict) -> list:
 
     for domain_folder in sorted(onedrive_path.iterdir()):
         if not domain_folder.is_dir():
+            continue
+        if domain_folders is not None and domain_folder.name not in domain_folders:
             continue
 
         drafts_folder = domain_folder / "Mail Drafts"
@@ -176,6 +179,12 @@ def main() -> None:
         action="store_true",
         help="Skip confirmation prompt and send immediately.",
     )
+    parser.add_argument(
+        "--domains",
+        nargs="+",
+        metavar="DOMAIN",
+        help="Only send drafts for these domain(s). Defaults to all domains.",
+    )
     args = parser.parse_args()
 
     print("=" * 80)
@@ -205,8 +214,17 @@ def main() -> None:
     employees = load_employees(config.EMPLOYEES_CSV)
 
     # Discover drafts
+    # Build set of OneDrive folder names to filter to (if --domains supplied)
+    domain_folders = None
+    if args.domains:
+        domain_folders = {config.get_domain_folder_name(d) for d in args.domains}
+        # Also accept without www. prefix
+        for d in args.domains:
+            if not d.startswith("www."):
+                domain_folders.add(config.get_domain_folder_name("www." + d))
+
     print(f"\nScanning for email drafts in: {onedrive_path}")
-    emails = discover_emails(onedrive_path, employees)
+    emails = discover_emails(onedrive_path, employees, domain_folders)
 
     if not emails:
         print("\nNo email drafts found. Run sharepoint_sync.py first.")
