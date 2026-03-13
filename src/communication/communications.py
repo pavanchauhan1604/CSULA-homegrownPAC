@@ -150,9 +150,28 @@ def create_html_email_summary(data):
                     <strong>Low Priority:</strong> {low_count} PDFs
                 </p>
             </div>
-            <p style="margin: 15px 0 0 0; font-size: 14px; color: #555;">
-                <strong>Note:</strong> High priority PDFs require <strong>immediate remediation</strong> — they violate core WCAG success criteria that make content fundamentally inaccessible to users with disabilities.
-            </p>
+            <table style="margin-top: 15px; width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background-color: #003262; color: white;">
+                        <th style="padding: 7px 10px; text-align: left; width: 80px;">Level</th>
+                        <th style="padding: 7px 10px; text-align: left;">Meaning</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fff0f0;">
+                        <td style="padding: 6px 10px;"><span style="display: inline-block; width: 14px; height: 14px; background-color: #8B0000; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span><strong>High</strong></td>
+                        <td style="padding: 6px 10px;">Violates core WCAG criteria — content is fundamentally inaccessible. <strong>Immediate remediation required.</strong></td>
+                    </tr>
+                    <tr style="background-color: #fff8f0;">
+                        <td style="padding: 6px 10px;"><span style="display: inline-block; width: 14px; height: 14px; background-color: #FF8C00; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span><strong>Medium</strong></td>
+                        <td style="padding: 6px 10px;">Significant accessibility barriers present. Should be remediated.</td>
+                    </tr>
+                    <tr style="background-color: #f0fff0;">
+                        <td style="padding: 6px 10px;"><span style="display: inline-block; width: 14px; height: 14px; background-color: #006400; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span><strong>Low</strong></td>
+                        <td style="padding: 6px 10px;">Satisfies core WCAG criteria. Minor errors only — no immediate action needed.</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
         '''
     
