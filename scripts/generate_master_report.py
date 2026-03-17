@@ -84,7 +84,7 @@ def _ensure_workbook(path: Path) -> openpyxl.Workbook:
 
 def _ensure_data_sheet(wb: openpyxl.Workbook):
     ws = wb[SHEET_DATA] if SHEET_DATA in wb.sheetnames else wb.create_sheet(SHEET_DATA, 0)
-    _style_header_row(ws, ["Run Timestamp", "Domain", "Total Unique PDFs", "High Priority PDFs"])
+    _style_header_row(ws, ["Scan Date", "Domain", "Total Unique PDFs", "High Priority PDFs"])
     ws.column_dimensions["A"].width = 22
     ws.column_dimensions["B"].width = 50
     ws.column_dimensions["C"].width = 22
@@ -118,7 +118,7 @@ def _refresh_run_index(run_index_ws, data_ws) -> list[str]:
     return ordered
 
 
-def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_rows: list[tuple[str, int, int]]):
+def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_rows: list[tuple[str, str, int, int]]):
     ws = wb[SHEET_DASHBOARD] if SHEET_DASHBOARD in wb.sheetnames else wb.create_sheet(SHEET_DASHBOARD)
 
     # Clear all existing content
@@ -129,31 +129,31 @@ def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_row
     ws["A1"] = "Master Report Dashboard"
     ws["A1"].font = Font(bold=True, size=14)
 
-    ws["A3"] = "Latest Run Timestamp"
+    ws["A3"] = "Latest Scan Date"
     ws["A3"].font = Font(bold=True)
     ws["B3"] = run_values[0] if run_values else ""
 
-    # Dropdown for reference – shows all available run timestamps in the hidden Run Index sheet.
-    # NOTE: The domain table below always reflects the most recent run (written as static values).
-    # To view older runs, filter the Data sheet by Run Timestamp.
+    # Dropdown for reference – shows all available scan dates in the hidden Run Index sheet.
+    # NOTE: The domain table below always reflects the most recent roll-up (written as static values).
+    # To view older runs, filter the Data sheet by Scan Date.
     list_end = max(1, len(run_values))
     dv = DataValidation(type="list", formula1=f"='{SHEET_RUN_INDEX}'!$A$1:$A${list_end}", allow_blank=False)
     ws.add_data_validation(dv)
     dv.add(ws["B3"])
 
-    ws["A5"] = "Total Unique PDFs (latest run)"
-    ws["B5"] = sum(r[1] for r in current_rows)
+    ws["A5"] = "Total Unique PDFs (latest roll-up)"
+    ws["B5"] = sum(r[2] for r in current_rows)
     ws["B5"].alignment = Alignment(horizontal="center")
-    ws["A6"] = "High Priority PDFs (latest run)"
-    ws["B6"] = sum(r[2] for r in current_rows)
+    ws["A6"] = "High Priority PDFs (latest roll-up)"
+    ws["B6"] = sum(r[3] for r in current_rows)
     ws["B6"].alignment = Alignment(horizontal="center")
 
-    ws["A8"] = "Tip: For older runs, go to the Data sheet and use Excel's column filter on 'Run Timestamp'."
+    ws["A8"] = "Tip: For older runs, go to the Data sheet and use Excel's column filter on 'Scan Date'."
     ws["A8"].font = Font(italic=True, color="666666")
 
     _style_header_row(ws, ["Domain", "Total Unique PDFs", "High Priority PDFs"], row=10)
 
-    for i, (domain, total, high) in enumerate(current_rows, start=11):
+    for i, (_, domain, total, high) in enumerate(current_rows, start=11):
         ws.cell(row=i, column=1, value=domain)
         ws.cell(row=i, column=2, value=total).alignment = Alignment(horizontal="center")
         ws.cell(row=i, column=3, value=high).alignment = Alignment(horizontal="center")
@@ -227,7 +227,7 @@ def main():
 
     output_path = onedrive_path / "Master Report.xlsx"
 
-    rows: list[tuple[str, int, int]] = []  # (domain_display, total_unique, high_count)
+    rows: list[tuple[str, str, int, int]] = []  # (scan_date, domain_display, total_unique, high_count)
 
     for folder in sorted(onedrive_path.iterdir()):
         if not folder.is_dir():
@@ -249,20 +249,25 @@ def main():
 
         total, high = count_pdfs(pdf_rows)
         display = folder_to_display_name(folder.name)
-        rows.append((display, total, high))
-        print(f"  [OK] {display}: {total} unique PDFs, {high} high priority")
+        
+        # Extract the logical scan date (YYYY-MM-DD) from the xlsx filename so that
+        # the dashboard reflects the actual time the domain was scanned, rather than
+        # the time this master script ran.
+        m = _TS_RE.search(xlsx.name)
+        scan_date = m.group(1)[:10] if m else datetime.today().strftime("%Y-%m-%d")
+        
+        rows.append((scan_date, display, total, high))
+        print(f"  [OK] {display}: {total} unique PDFs, {high} high priority (scan: {scan_date})")
 
     # Sort by high priority PDFs descending
-    rows.sort(key=lambda x: x[2], reverse=True)
-
-    run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    rows.sort(key=lambda x: x[3], reverse=True)
 
     wb = _ensure_workbook(output_path)
     data_ws = _ensure_data_sheet(wb)
     run_index_ws = _ensure_run_index_sheet(wb)
 
-    for domain, total, high in rows:
-        data_ws.append([run_ts, domain, total, high])
+    for scan_date, domain, total, high in rows:
+        data_ws.append([scan_date, domain, total, high])
         data_ws.cell(row=data_ws.max_row, column=3).alignment = Alignment(horizontal="center")
         data_ws.cell(row=data_ws.max_row, column=4).alignment = Alignment(horizontal="center")
 
@@ -279,9 +284,8 @@ def main():
         ) from e
 
     print(f"\n[DONE] Master Report saved → {output_path}")
-    print(f"       run timestamp: {run_ts}")
-    print(f"       {len(rows)} domains | {sum(r[1] for r in rows)} total unique PDFs | {sum(r[2] for r in rows)} high priority")
-    print(f"       {len(run_values)} runs available in Dashboard dropdown")
+    print(f"       {len(rows)} domains | {sum(r[2] for r in rows)} total unique PDFs | {sum(r[3] for r in rows)} high priority")
+    print(f"       {len(run_values)} scan dates available in Dashboard dropdown")
 
 
 if __name__ == "__main__":
