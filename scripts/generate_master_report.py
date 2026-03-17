@@ -114,38 +114,50 @@ def _refresh_run_index(run_index_ws, data_ws) -> list[str]:
     return ordered
 
 
-def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str]):
+def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_rows: list[tuple[str, int, int]]):
     ws = wb[SHEET_DASHBOARD] if SHEET_DASHBOARD in wb.sheetnames else wb.create_sheet(SHEET_DASHBOARD)
 
-    if ws.max_row > 1:
-        ws.delete_rows(1, ws.max_row)
-    if ws.max_column > 1:
-        ws.delete_cols(1, ws.max_column)
+    # Clear all existing content
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.value = None
 
     ws["A1"] = "Master Report Dashboard"
     ws["A1"].font = Font(bold=True, size=14)
 
-    ws["A3"] = "Select Run Timestamp"
+    ws["A3"] = "Latest Run Timestamp"
     ws["A3"].font = Font(bold=True)
     ws["B3"] = run_values[0] if run_values else ""
 
+    # Dropdown for reference – shows all available run timestamps in the hidden Run Index sheet.
+    # NOTE: The domain table below always reflects the most recent run (written as static values).
+    # To view older runs, filter the Data sheet by Run Timestamp.
     list_end = max(1, len(run_values))
     dv = DataValidation(type="list", formula1=f"='{SHEET_RUN_INDEX}'!$A$1:$A${list_end}", allow_blank=False)
     ws.add_data_validation(dv)
     dv.add(ws["B3"])
 
-    ws["A5"] = "Total Unique PDFs"
-    ws["B5"] = f'=SUMIFS({SHEET_DATA}!$C:$C,{SHEET_DATA}!$A:$A,$B$3)'
-    ws["A6"] = "High Priority PDFs"
-    ws["B6"] = f'=SUMIFS({SHEET_DATA}!$D:$D,{SHEET_DATA}!$A:$A,$B$3)'
+    ws["A5"] = "Total Unique PDFs (latest run)"
+    ws["B5"] = sum(r[1] for r in current_rows)
+    ws["B5"].alignment = Alignment(horizontal="center")
+    ws["A6"] = "High Priority PDFs (latest run)"
+    ws["B6"] = sum(r[2] for r in current_rows)
+    ws["B6"].alignment = Alignment(horizontal="center")
 
-    _style_header_row(ws, ["Domain", "Total Unique PDFs", "High Priority PDFs"], row=9)
-    ws["A10"] = f'=IFERROR(FILTER({SHEET_DATA}!$B:$D,{SHEET_DATA}!$A:$A=$B$3),"No data for selected run")'
+    ws["A8"] = "Tip: For older runs, go to the Data sheet and use Excel's column filter on 'Run Timestamp'."
+    ws["A8"].font = Font(italic=True, color="666666")
+
+    _style_header_row(ws, ["Domain", "Total Unique PDFs", "High Priority PDFs"], row=10)
+
+    for i, (domain, total, high) in enumerate(current_rows, start=11):
+        ws.cell(row=i, column=1, value=domain)
+        ws.cell(row=i, column=2, value=total).alignment = Alignment(horizontal="center")
+        ws.cell(row=i, column=3, value=high).alignment = Alignment(horizontal="center")
 
     ws.column_dimensions["A"].width = 50
     ws.column_dimensions["B"].width = 22
     ws.column_dimensions["C"].width = 22
-    ws.freeze_panes = "A10"
+    ws.freeze_panes = "A11"
 
 
 def find_latest_xlsx(folder: Path) -> Path | None:
@@ -251,7 +263,7 @@ def main():
         data_ws.cell(row=data_ws.max_row, column=4).alignment = Alignment(horizontal="center")
 
     run_values = _refresh_run_index(run_index_ws, data_ws)
-    _refresh_dashboard(wb, run_values)
+    _refresh_dashboard(wb, run_values, rows)
 
     try:
         wb.save(output_path)
