@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -43,6 +44,8 @@ SHEET_RUN_INDEX = "Run Index"
 
 HEADER_FILL = PatternFill("solid", fgColor="003262")
 HEADER_FONT = Font(bold=True, color="FFFFFF")
+LOCK_RETRY_ATTEMPTS = 3
+LOCK_RETRY_DELAY_SECONDS = 2
 
 
 def _style_header_row(ws, headers: list[str], row: int = 1) -> None:
@@ -54,7 +57,26 @@ def _style_header_row(ws, headers: list[str], row: int = 1) -> None:
 
 
 def _ensure_workbook(path: Path) -> openpyxl.Workbook:
-    wb = openpyxl.load_workbook(path) if path.exists() else openpyxl.Workbook()
+    if not path.exists():
+        wb = openpyxl.Workbook()
+    else:
+        last_error: Exception | None = None
+        wb = None
+        for attempt in range(1, LOCK_RETRY_ATTEMPTS + 1):
+            try:
+                wb = openpyxl.load_workbook(path)
+                break
+            except PermissionError as e:
+                last_error = e
+                if attempt < LOCK_RETRY_ATTEMPTS:
+                    time.sleep(LOCK_RETRY_DELAY_SECONDS)
+        if wb is None:
+            raise RuntimeError(
+                f"Cannot open '{path}'. The file appears to be locked. "
+                "Close Master Report.xlsx in Excel (and let OneDrive finish syncing) "
+                "then run this script again."
+            ) from last_error
+
     if "Sheet" in wb.sheetnames and len(wb.sheetnames) == 1:
         del wb["Sheet"]
     return wb
@@ -231,7 +253,15 @@ def main():
     run_values = _refresh_run_index(run_index_ws, data_ws)
     _refresh_dashboard(wb, run_values)
 
-    wb.save(output_path)
+    try:
+        wb.save(output_path)
+    except PermissionError as e:
+        raise RuntimeError(
+            f"Cannot save '{output_path}'. The file appears to be locked. "
+            "Close Master Report.xlsx in Excel (and let OneDrive finish syncing) "
+            "then run this script again."
+        ) from e
+
     print(f"\n[DONE] Master Report saved → {output_path}")
     print(f"       run timestamp: {run_ts}")
     print(f"       {len(rows)} domains | {sum(r[1] for r in rows)} total unique PDFs | {sum(r[2] for r in rows)} high priority")
