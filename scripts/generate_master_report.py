@@ -90,6 +90,10 @@ def _ensure_data_sheet(wb: openpyxl.Workbook):
     ws.column_dimensions["C"].width = 22
     ws.column_dimensions["D"].width = 22
     ws.freeze_panes = "A2"
+    
+    # Add auto-filter arrows to the header row
+    ws.auto_filter.ref = "A1:D1"
+    
     return ws
 
 
