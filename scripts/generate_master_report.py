@@ -1,20 +1,22 @@
-"""Generate a master Excel report summarising all domains synced to OneDrive.
+"""Generate a historical master Excel report summarising all synced domains.
 
 For every domain folder found in TEAMS_ONEDRIVE_PATH this script:
-  1. Finds the latest .xlsx report inside that folder
-  2. Reads the 'Unique PDFs' sheet
-  3. Counts total unique PDFs and high-priority PDFs
-  4. Writes / overwrites  TEAMS_ONEDRIVE_PATH/Master Report.xlsx
+    1. Finds the latest .xlsx report inside that folder
+    2. Reads the 'Unique PDFs' sheet
+    3. Counts total unique PDFs and high-priority PDFs
+    4. Appends one run snapshot to a historical Data sheet
+    5. Refreshes a Dashboard sheet with a run-date dropdown selector
 
 Usage
 -----
-    python scripts/generate_master_report.py
+        python scripts/generate_master_report.py
 """
 
 from __future__ import annotations
 
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +24,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import openpyxl
+from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Font, PatternFill, Alignment
 
 import config
@@ -33,6 +36,94 @@ from scripts.sharepoint_sync import row_to_priority_data, read_unique_pdfs_sheet
 # ---------------------------------------------------------------------------
 
 _TS_RE = re.compile(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", re.IGNORECASE)
+
+SHEET_DATA = "Data"
+SHEET_DASHBOARD = "Dashboard"
+SHEET_RUN_INDEX = "Run Index"
+
+HEADER_FILL = PatternFill("solid", fgColor="003262")
+HEADER_FONT = Font(bold=True, color="FFFFFF")
+
+
+def _style_header_row(ws, headers: list[str], row: int = 1) -> None:
+    for col, h in enumerate(headers, start=1):
+        cell = ws.cell(row=row, column=col, value=h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = Alignment(horizontal="center")
+
+
+def _ensure_workbook(path: Path) -> openpyxl.Workbook:
+    wb = openpyxl.load_workbook(path) if path.exists() else openpyxl.Workbook()
+    if "Sheet" in wb.sheetnames and len(wb.sheetnames) == 1:
+        del wb["Sheet"]
+    return wb
+
+
+def _ensure_data_sheet(wb: openpyxl.Workbook):
+    ws = wb[SHEET_DATA] if SHEET_DATA in wb.sheetnames else wb.create_sheet(SHEET_DATA, 0)
+    _style_header_row(ws, ["Run Timestamp", "Domain", "Total Unique PDFs", "High Priority PDFs"])
+    ws.column_dimensions["A"].width = 22
+    ws.column_dimensions["B"].width = 50
+    ws.column_dimensions["C"].width = 22
+    ws.column_dimensions["D"].width = 22
+    ws.freeze_panes = "A2"
+    return ws
+
+
+def _ensure_run_index_sheet(wb: openpyxl.Workbook):
+    ws = wb[SHEET_RUN_INDEX] if SHEET_RUN_INDEX in wb.sheetnames else wb.create_sheet(SHEET_RUN_INDEX)
+    ws.sheet_state = "hidden"
+    return ws
+
+
+def _refresh_run_index(run_index_ws, data_ws) -> list[str]:
+    run_values = {
+        str(data_ws.cell(row=row, column=1).value).strip()
+        for row in range(2, data_ws.max_row + 1)
+        if data_ws.cell(row=row, column=1).value
+    }
+    ordered = sorted(run_values, reverse=True)
+
+    run_index_ws.delete_rows(1, run_index_ws.max_row)
+    for i, val in enumerate(ordered, start=1):
+        run_index_ws.cell(row=i, column=1, value=val)
+    run_index_ws.sheet_state = "hidden"
+    return ordered
+
+
+def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str]):
+    ws = wb[SHEET_DASHBOARD] if SHEET_DASHBOARD in wb.sheetnames else wb.create_sheet(SHEET_DASHBOARD)
+
+    if ws.max_row > 1:
+        ws.delete_rows(1, ws.max_row)
+    if ws.max_column > 1:
+        ws.delete_cols(1, ws.max_column)
+
+    ws["A1"] = "Master Report Dashboard"
+    ws["A1"].font = Font(bold=True, size=14)
+
+    ws["A3"] = "Select Run Timestamp"
+    ws["A3"].font = Font(bold=True)
+    ws["B3"] = run_values[0] if run_values else ""
+
+    list_end = max(1, len(run_values))
+    dv = DataValidation(type="list", formula1=f"='{SHEET_RUN_INDEX}'!$A$1:$A${list_end}", allow_blank=False)
+    ws.add_data_validation(dv)
+    dv.add(ws["B3"])
+
+    ws["A5"] = "Total Unique PDFs"
+    ws["B5"] = f'=SUMIFS({SHEET_DATA}!$C:$C,{SHEET_DATA}!$A:$A,$B$3)'
+    ws["A6"] = "High Priority PDFs"
+    ws["B6"] = f'=SUMIFS({SHEET_DATA}!$D:$D,{SHEET_DATA}!$A:$A,$B$3)'
+
+    _style_header_row(ws, ["Domain", "Total Unique PDFs", "High Priority PDFs"], row=9)
+    ws["A10"] = f'=IFERROR(FILTER({SHEET_DATA}!$B:$D,{SHEET_DATA}!$A:$A=$B$3),"No data for selected run")'
+
+    ws.column_dimensions["A"].width = 50
+    ws.column_dimensions["B"].width = 22
+    ws.column_dimensions["C"].width = 22
+    ws.freeze_panes = "A10"
 
 
 def find_latest_xlsx(folder: Path) -> Path | None:
@@ -126,34 +217,25 @@ def main():
     # Sort by high priority PDFs descending
     rows.sort(key=lambda x: x[2], reverse=True)
 
-    # Build workbook
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Master Report"
+    run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    header_fill = PatternFill("solid", fgColor="003262")
-    header_font = Font(bold=True, color="FFFFFF")
-    headers = ["Domain", "Total Unique PDFs", "High Priority PDFs"]
+    wb = _ensure_workbook(output_path)
+    data_ws = _ensure_data_sheet(wb)
+    run_index_ws = _ensure_run_index_sheet(wb)
 
-    for col, h in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col, value=h)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center")
+    for domain, total, high in rows:
+        data_ws.append([run_ts, domain, total, high])
+        data_ws.cell(row=data_ws.max_row, column=3).alignment = Alignment(horizontal="center")
+        data_ws.cell(row=data_ws.max_row, column=4).alignment = Alignment(horizontal="center")
 
-    for row_idx, (domain, total, high) in enumerate(rows, start=2):
-        ws.cell(row=row_idx, column=1, value=domain)
-        ws.cell(row=row_idx, column=2, value=total).alignment = Alignment(horizontal="center")
-        ws.cell(row=row_idx, column=3, value=high).alignment = Alignment(horizontal="center")
-
-    # Auto-fit column widths
-    ws.column_dimensions["A"].width = 50
-    ws.column_dimensions["B"].width = 22
-    ws.column_dimensions["C"].width = 22
+    run_values = _refresh_run_index(run_index_ws, data_ws)
+    _refresh_dashboard(wb, run_values)
 
     wb.save(output_path)
     print(f"\n[DONE] Master Report saved → {output_path}")
+    print(f"       run timestamp: {run_ts}")
     print(f"       {len(rows)} domains | {sum(r[1] for r in rows)} total unique PDFs | {sum(r[2] for r in rows)} high priority")
+    print(f"       {len(run_values)} runs available in Dashboard dropdown")
 
 
 if __name__ == "__main__":
