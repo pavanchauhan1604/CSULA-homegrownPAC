@@ -149,6 +149,25 @@ python scripts/historical_analysis.py
 python scripts/historical_analysis.py --no-upload
 ```
 
+### Generate Master Report Workbook (with date dropdown)
+```powershell
+# Activate the virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# Build/update OneDrive/Master Report.xlsx
+python scripts/generate_master_report.py
+```
+
+What this creates/updates in `Master Report.xlsx`:
+- `Data` sheet: appends one snapshot per run (timestamp + domain totals)
+- `Dashboard` sheet: includes a dropdown in cell `B3` to select a run timestamp
+- `Run Index` sheet: hidden helper sheet used by the dropdown list
+
+After running:
+1. Open `Master Report.xlsx` in your synced OneDrive Teams folder.
+2. Go to the `Dashboard` tab.
+3. Use the dropdown in `B3` to select the run date/time you want to report.
+
 ## Key Features
 
 - **Automated Web Crawling**: Scrapy spiders crawl university domains to find PDFs
