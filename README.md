@@ -98,8 +98,8 @@ Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
 ### Daily workflow
 
 ```powershell
-# Full pipeline: crawl → scan → Excel reports → sync to OneDrive → generate email drafts
-.\scripts\run_workflow_smooth.ps1 ; python scripts/sharepoint_sync.py
+# Full pipeline: crawl → scan → Excel → sync to OneDrive → email drafts → all reports
+.\scripts\run_workflow_smooth.ps1 ; python scripts/sharepoint_sync.py ; python scripts/historical_analysis.py ; python scripts/generate_master_report.py ; python scripts/generate_master_report_html.py
 
 # Review the HTML drafts in the OneDrive domain folders, then send when ready
 python scripts/send_emails.py          # prompts for confirmation
