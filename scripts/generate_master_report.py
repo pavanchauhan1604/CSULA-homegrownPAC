@@ -29,8 +29,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Font, PatternFill, Alignment
 
 import config
-from src.core.filters import get_priority_level
-from scripts.sharepoint_sync import row_to_priority_data, read_unique_pdfs_sheet
+from scripts.sharepoint_sync import read_unique_pdfs_sheet
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -188,30 +187,26 @@ def folder_to_display_name(folder_name: str) -> str:
 def count_pdfs(pdf_rows: list) -> tuple[int, int]:
     """Return (total_unique, high_priority_count) from Unique PDFs sheet rows.
 
-    pdf_uri cells are stored as =HYPERLINK(...) formulas in the Excel.  When the
-    file has never been opened in Microsoft Excel the cached value is None and
-    data_only=True returns None for those cells.  Use 'fingerprint' (a plain-text
-    column) as the dedup key so counts are always correct.
-    """
-    priority_order = {"high": 0, "medium": 1, "low": 2}
+    High priority is defined as Low Priority == "No" — matching the definition
+    used by historical_analysis.py and the compliance % calculation so that all
+    reports are consistent. A PDF stays high priority until a content manager
+    explicitly marks it "Yes" (safe/done) in the Low Priority column.
 
-    # Deduplicate by fingerprint (plain text, never a formula).
-    # Fall back to row index so every row still counts even if fingerprint is absent.
-    unique: dict[str, dict] = {}
+    pdf_uri cells are stored as =HYPERLINK(...) formulas in the Excel. Use
+    'fingerprint' (a plain-text column) as the dedup key so counts are correct
+    even when the file has never been opened in Excel (cached formula values = None).
+    """
+    seen: dict[str, bool] = {}  # fingerprint → is_high_priority
     for idx, row in enumerate(pdf_rows):
         key = str(row.get("fingerprint") or "").strip() or f"__row_{idx}"
-        try:
-            pdata = row_to_priority_data(row)
-            level, _, _ = get_priority_level(pdata)
-        except Exception:
-            level = "low"
+        raw_lp = row.get("Low Priority") or ""
+        is_high = isinstance(raw_lp, str) and raw_lp.strip().lower() == "no"
+        # If same fingerprint appears twice, mark high if either row is high
+        if key not in seen or is_high:
+            seen[key] = is_high
 
-        existing = unique.get(key)
-        if existing is None or priority_order[level] < priority_order[existing["level"]]:
-            unique[key] = {"level": level}
-
-    total = len(unique)
-    high = sum(1 for v in unique.values() if v["level"] == "high")
+    total = len(seen)
+    high = sum(1 for v in seen.values() if v)
     return total, high
 
 
