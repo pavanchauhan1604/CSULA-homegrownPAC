@@ -73,7 +73,7 @@ def _ensure_workbook(path: Path) -> openpyxl.Workbook:
         if wb is None:
             raise RuntimeError(
                 f"Cannot open '{path}'. The file appears to be locked. "
-                "Close Master Report.xlsx in Excel (and let OneDrive finish syncing) "
+                "Close Master/Master Report.xlsx in Excel (and let OneDrive finish syncing)"
                 "then run this script again."
             ) from last_error
 
@@ -225,7 +225,9 @@ def main():
         print(f"[ERROR] OneDrive folder not found: {onedrive_path}")
         sys.exit(1)
 
-    output_path = onedrive_path / "Master Report.xlsx"
+    master_dir = onedrive_path / "Master"
+    master_dir.mkdir(exist_ok=True)
+    output_path = master_dir / "Master Report.xlsx"
 
     rows: list[tuple[str, str, int, int]] = []  # (scan_date, domain_display, total_unique, high_count)
 
@@ -279,7 +281,7 @@ def main():
     except PermissionError as e:
         raise RuntimeError(
             f"Cannot save '{output_path}'. The file appears to be locked. "
-            "Close Master Report.xlsx in Excel (and let OneDrive finish syncing) "
+            "Close Master/Master Report.xlsx in Excel (and let OneDrive finish syncing)"
             "then run this script again."
         ) from e
 

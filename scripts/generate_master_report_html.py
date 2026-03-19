@@ -11,8 +11,8 @@ produces a single self-contained HTML dashboard showing:
   • Domain table     — sortable summary with colour-coded status and trend arrows
   • Domain cards     — per-domain metrics + mini compliance trend chart
 
-The report is saved to <source-folder>/master_report.html and overwrites the
-previous version on every run, so Teams/OneDrive will sync the latest copy
+The report is saved to <source-folder>/Master/master_report.html and overwrites
+the previous version on every run, so Teams/OneDrive will sync the latest copy
 automatically.
 
 Usage
@@ -658,7 +658,12 @@ def main() -> None:
     generated_at = datetime.now()
     html = build_html(domain_data, generated_at)
 
-    out_path = Path(args.output) if args.output else source_path / "master_report.html"
+    if args.output:
+        out_path = Path(args.output)
+    else:
+        master_dir = source_path / "Master"
+        master_dir.mkdir(exist_ok=True)
+        out_path = master_dir / "master_report.html"
     out_path.write_text(html, encoding="utf-8")
 
     stats = aggregate_stats(domain_data)
