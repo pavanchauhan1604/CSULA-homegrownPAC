@@ -349,8 +349,17 @@ def collect_from_teams(domains: list[str]) -> dict[str, list[dict]]:
 # =============================================================================
 
 def _js(obj: Any) -> str:
-    """Serialize *obj* to compact JSON safe for embedding in a JS context."""
-    return json.dumps(obj, default=str)
+    """Serialize *obj* to compact JSON safe for embedding in a <script> context.
+
+    Escapes < > & so that substrings like </script> or <!-- in error-message
+    text cannot break the enclosing HTML <script> tag.
+    """
+    return (
+        json.dumps(obj, default=str)
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
 
 
 def _anchor(domain: str) -> str:
@@ -490,6 +499,10 @@ def _domain_section(domain: str, scans: list[dict], idx: int) -> tuple[str, int]
         </div>
         <script>
         (function(){{
+          if (typeof Chart === 'undefined') {{
+            console.error('Chart.js failed to load — charts will not render. Check your network connection or CDN.');
+            return;
+          }}
           new Chart(document.getElementById("{pdfs_chart_id}"),{{
             type:"line",
             data:{{ labels:{_js(date_labels)},
