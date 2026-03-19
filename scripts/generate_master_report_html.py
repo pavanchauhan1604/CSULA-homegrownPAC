@@ -143,32 +143,53 @@ def _agg_over_time(domain_data: dict[str, list[dict]]):
     return sorted_dates, agg_pct, agg_high
 
 
-def _domain_trend_datasets(domain_data: dict[str, list[dict]]):
-    """One Chart.js dataset per domain showing compliance % over the shared date axis."""
-    all_dates: set[str] = set()
-    for scans in domain_data.values():
-        for s in scans:
-            all_dates.add(s["timestamp"].strftime("%Y-%m-%d"))
-    sorted_dates = sorted(all_dates)
+def _domain_progress_table(domain_data: dict[str, list[dict]]) -> str:
+    """HTML table: first scan → latest scan compliance change per domain (≥2 scans only)."""
+    rows = []
+    for domain, scans in domain_data.items():
+        if len(scans) < 2:
+            continue
+        first  = scans[0]["compliance_pct"]
+        latest = scans[-1]["compliance_pct"]
+        delta  = latest - first
+        rows.append((domain, first, latest, delta, len(scans)))
 
-    datasets = []
-    for i, (domain, scans) in enumerate(sorted(domain_data.items())):
-        points = []
-        for date_str in sorted_dates:
-            match = [s for s in scans if s["timestamp"].strftime("%Y-%m-%d") <= date_str]
-            points.append(match[-1]["compliance_pct"] if match else None)
-        color = _CHART_COLORS[i % len(_CHART_COLORS)]
-        datasets.append({
-            "label": domain,
-            "data": points,
-            "borderColor": color,
-            "backgroundColor": color + "22",
-            "tension": 0.3,
-            "fill": False,
-            "spanGaps": True,
-            "pointRadius": 3,
-        })
-    return sorted_dates, datasets
+    if not rows:
+        return (
+            '<p style="color:#888;font-size:.85rem;padding:14px 0">'
+            'Not enough scan history yet — each domain needs at least 2 scans to show progress.</p>'
+        )
+
+    # Biggest movers (improving or declining) first
+    rows.sort(key=lambda r: abs(r[3]), reverse=True)
+
+    html = (
+        '<table class="prog-tbl"><thead><tr>'
+        '<th>Domain</th>'
+        '<th class="c">Baseline</th>'
+        '<th class="c">Latest</th>'
+        '<th class="c">Change</th>'
+        '<th class="c">Scans</th>'
+        '</tr></thead><tbody>'
+    )
+    for domain, first, latest, delta, n_scans in rows:
+        if delta > 2:
+            delta_html = f'<span class="prog-up">&#8593;&nbsp;+{delta:.1f}%</span>'
+        elif delta < -2:
+            delta_html = f'<span class="prog-dn">&#8595;&nbsp;{delta:.1f}%</span>'
+        else:
+            delta_html = f'<span class="prog-st">&#8594;&nbsp;{delta:+.1f}%</span>'
+        html += (
+            f'<tr>'
+            f'<td><a href="#{_anchor(domain)}" class="domain-link">{domain}</a></td>'
+            f'<td class="c"><span class="pval {_pct_cls(first)}">{first:.1f}%</span></td>'
+            f'<td class="c"><span class="pval {_pct_cls(latest)}">{latest:.1f}%</span></td>'
+            f'<td class="c">{delta_html}</td>'
+            f'<td class="c" style="color:#999;font-size:.8rem">{n_scans}</td>'
+            f'</tr>'
+        )
+    html += '</tbody></table>'
+    return html
 
 
 # =============================================================================
@@ -249,9 +270,8 @@ def _snapshot_js(sorted_domains: list[str], snap_comp: list[float],
 
 
 def _history_js(agg_dates: list[str], agg_pct: list[float],
-                agg_high: list[int], trend_dates: list[str],
-                trend_datasets: list[dict]) -> str:
-    """Chart.js init for the three historical charts."""
+                agg_high: list[int]) -> str:
+    """Chart.js init for the two aggregate historical charts."""
     tgt = _js([100] * len(agg_dates))
     return (
         '<script>(function(){'
@@ -283,14 +303,6 @@ def _history_js(agg_dates: list[str], agg_pct: list[float],
         'options:{responsive:true,'
         'plugins:{legend:{position:"top"}},'
         'scales:{y:{beginAtZero:true}}}'
-        '});'
-        # Per-domain trend lines
-        'new Chart(document.getElementById("domain-trends"),{'
-        'type:"line",'
-        'data:{labels:' + _js(trend_dates) + ',datasets:' + _js(trend_datasets) + '},'
-        'options:{responsive:true,'
-        'plugins:{legend:{position:"bottom",labels:{boxWidth:12,font:{size:10}}}},'
-        'scales:{y:{min:0,max:100,ticks:{callback:' + _pct_callback() + '}}}}'
         '});'
         '})();</script>'
     )
@@ -463,6 +475,21 @@ tr:hover td{background:#f6f9ff}
 .back-link{font-size:.76rem;color:#C4820E;text-decoration:none;font-weight:600}
 .back-link:hover{color:#003262}
 
+/* Domain progress table */
+.prog-tbl{width:100%;border-collapse:collapse;font-size:.855rem}
+.prog-tbl th{background:#003262;color:#fff;padding:9px 14px;font-size:.72rem;font-weight:700;
+             text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.prog-tbl td{padding:9px 14px;border-bottom:1px solid #f0f2f5;vertical-align:middle}
+.prog-tbl tr:last-child td{border-bottom:none}
+.prog-tbl tr:hover td{background:#f6f9ff}
+.pval{font-weight:700}
+.pval.good{color:#1a6e3a}
+.pval.warn{color:#7a4f00}
+.pval.bad{color:#8b0000}
+.prog-up{color:#1a6e3a;font-weight:700}
+.prog-dn{color:#8b0000;font-weight:700}
+.prog-st{color:#999;font-weight:600}
+
 footer{text-align:center;padding:18px;font-size:.73rem;color:#90aac8;
        border-top:1px solid #1a4a7a;background:#003262}
 
@@ -477,10 +504,9 @@ footer{text-align:center;padding:18px;font-size:.73rem;color:#90aac8;
 
 
 def build_html(domain_data: dict[str, list[dict]], generated_at: datetime) -> str:
-    stats                          = aggregate_stats(domain_data)
-    agg_dates, agg_pct, agg_high   = _agg_over_time(domain_data)
-    trend_dates, trend_datasets    = _domain_trend_datasets(domain_data)
-    show_history                   = len(agg_dates) >= 2
+    stats                        = aggregate_stats(domain_data)
+    agg_dates, agg_pct, agg_high = _agg_over_time(domain_data)
+    show_history                 = len(agg_dates) >= 2
 
     gen_str     = generated_at.strftime("%B %d, %Y at %I:%M %p")
     overall_cls = _pct_cls(stats["compliance_pct"])
@@ -586,10 +612,12 @@ def build_html(domain_data: dict[str, list[dict]], generated_at: datetime) -> st
             '</div>'
             '</div>'
             '<div class="chart-card" style="margin-bottom:16px">'
-            '<div class="chart-label">Per-Domain Compliance % Over Time</div>'
-            '<canvas id="domain-trends"></canvas>'
+            '<div class="chart-label">Domain Progress — Baseline to Latest Scan</div>'
+            '<p style="font-size:.75rem;color:#888;margin-bottom:10px">Sorted by biggest change. '
+            'Each domain card below has its own trend chart.</p>'
+            + _domain_progress_table(domain_data) +
             '</div>'
-            + _history_js(agg_dates, agg_pct, agg_high, trend_dates, trend_datasets)
+            + _history_js(agg_dates, agg_pct, agg_high)
         )
 
     # ── Per-domain cards ───────────────────────────────────────────────────
