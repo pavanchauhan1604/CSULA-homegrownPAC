@@ -149,24 +149,51 @@ python scripts/historical_analysis.py
 python scripts/historical_analysis.py --no-upload
 ```
 
-### Generate Master Report Workbook (with date dropdown)
+### Generate Master Reports (Excel + HTML dashboard)
+
+Both scripts write into the **`Master/`** subfolder inside your synced OneDrive
+Teams folder (`Master/Master Report.xlsx` and `Master/master_report.html`).
+Run them together with:
+
 ```powershell
 # Activate the virtual environment
 .\.venv\Scripts\Activate.ps1
 
-# Build/update OneDrive/Master Report.xlsx
-python scripts/generate_master_report.py
+# Generate both master reports in one go
+python scripts/generate_master_report.py ; python scripts/generate_master_report_html.py
 ```
 
-What this creates/updates in `Master Report.xlsx`:
-- `Data` sheet: appends one snapshot per run (timestamp + domain totals)
-- `Dashboard` sheet: includes a dropdown in cell `B3` to select a run timestamp
+Or run them individually:
+
+```powershell
+# Excel workbook — historical data accumulates across runs, Dashboard always shows latest
+python scripts/generate_master_report.py
+
+# HTML dashboard — fully overwritten/refreshed on every run
+python scripts/generate_master_report_html.py
+
+# HTML dashboard from a local folder instead of OneDrive
+python scripts/generate_master_report_html.py --source local --local-path "C:\path\to\folder"
+```
+
+**Overwrite behaviour:**
+
+| File | Behaviour |
+|---|---|
+| `Master/master_report.html` | Fully overwritten each run — always reflects current scan data |
+| `Master/Master Report.xlsx` | File is overwritten, but the `Data` sheet **accumulates** one snapshot per run per domain (historical log). The `Dashboard` tab always reflects the most recent run. |
+
+What `Master Report.xlsx` contains:
+- `Data` sheet: one row per domain per run (timestamp + totals) — grows over time
+- `Dashboard` sheet: always shows the latest run; includes a dropdown in `B3` to browse older run dates
 - `Run Index` sheet: hidden helper sheet used by the dropdown list
 
-After running:
-1. Open `Master Report.xlsx` in your synced OneDrive Teams folder.
-2. Go to the `Dashboard` tab.
-3. Use the dropdown in `B3` to select the run date/time you want to report.
+What `master_report.html` contains:
+- Summary pills: total domains, unique PDFs, overall compliance %, high-priority count
+- Trend insight banner: how many domains are improving / declining / stable
+- Snapshot bar charts: compliance % and high-priority PDFs per domain (colour-coded)
+- Historical trend charts: aggregate and per-domain compliance over time (when ≥ 2 scan dates exist)
+- Domain summary table and per-domain detail cards with mini trend charts
 
 ## Key Features
 
