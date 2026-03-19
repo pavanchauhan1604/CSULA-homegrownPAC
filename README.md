@@ -98,10 +98,10 @@ Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
 ### Daily workflow
 
 ```powershell
-# Run the full pipeline then immediately sync to OneDrive + generate email drafts
-.\scripts\run_workflow_smooth.ps1 && python scripts/sharepoint_sync.py
+# Full pipeline: crawl → scan → Excel reports → sync to OneDrive → generate email drafts
+.\scripts\run_workflow_smooth.ps1 ; python scripts/sharepoint_sync.py
 
-# Step 3 — Review the HTML drafts in the OneDrive domain folders, then send when ready
+# Review the HTML drafts in the OneDrive domain folders, then send when ready
 python scripts/send_emails.py          # prompts for confirmation
 python scripts/send_emails.py --force  # skips confirmation
 
@@ -153,17 +153,16 @@ python scripts/historical_analysis.py --no-upload
 
 Both scripts write into the **`Master/`** subfolder inside your synced OneDrive
 Teams folder (`Master/Master Report.xlsx` and `Master/master_report.html`).
-Run them together with:
 
 ```powershell
 # Activate the virtual environment
 .\.venv\Scripts\Activate.ps1
 
-# Generate both master reports in one go
+# Generate both master reports in one go (Excel first, then HTML dashboard)
 python scripts/generate_master_report.py ; python scripts/generate_master_report_html.py
 ```
 
-Or run them individually:
+Run them individually if needed:
 
 ```powershell
 # Excel workbook — historical data accumulates across runs, Dashboard always shows latest
