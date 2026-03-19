@@ -49,3 +49,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# AI assistant context files (local only)
+CLAUDE.md
+.claude/
