@@ -215,7 +215,19 @@ def main():
     data_ws = _ensure_data_sheet(wb)
     run_index_ws = _ensure_run_index_sheet(wb)
 
+    # Build set of already-recorded (scan_date, domain) pairs so re-runs
+    # on the same day don't append duplicate rows.
+    existing = {
+        (str(data_ws.cell(row=r, column=1).value).strip(),
+         str(data_ws.cell(row=r, column=2).value).strip())
+        for r in range(2, data_ws.max_row + 1)
+        if data_ws.cell(row=r, column=1).value
+    }
+
     for scan_date, domain, total, high in rows:
+        if (scan_date, domain) in existing:
+            print(f"  [SKIP] Already recorded {domain} for {scan_date}")
+            continue
         data_ws.append([scan_date, domain, total, high])
         data_ws.cell(row=data_ws.max_row, column=3).alignment = Alignment(horizontal="center")
         data_ws.cell(row=data_ws.max_row, column=4).alignment = Alignment(horizontal="center")

@@ -203,14 +203,35 @@ def _strip_hyperlink(val) -> str:
 # ---------------------------------------------------------------------------
 
 def build_domain_data_for_email(domain: str, pdf_rows: list) -> dict:
-    """Build the data structure expected by create_html_email_summary()."""
-    pdfs = []
-    for row in pdf_rows:
-        priority_data = row_to_priority_data(row)
-        priority_level, color_code, priority_name = get_priority_level(priority_data)
+    """Build the data structure expected by create_html_email_summary().
 
-        pdf_uri = _strip_hyperlink(row.get("pdf_uri") or row.get("pdf_title") or "")
-        parent_uri = _strip_hyperlink(row.get("parent_uri") or "")
+    Priority is read directly from the pre-stamped 'Low Priority' column
+    (set by data_export.py using is_high_priority() at scan time) so that
+    email counts match the compliance reports exactly.
+      Low Priority == "No"  → high priority (needs remediation)
+      Low Priority == "Yes" → low priority (compliant / addressed)
+    """
+    # Deduplicate by fingerprint first — same logic as parse_domain_excel()
+    seen: dict[str, dict] = {}
+    for idx, row in enumerate(pdf_rows):
+        fp = str(row.get("fingerprint") or "").strip() or f"__row_{idx}"
+        raw_lp = str(row.get("Low Priority") or "").strip().lower()
+        is_high = raw_lp == "no"
+        if fp not in seen or is_high:
+            seen[fp] = {"row": row, "is_high": is_high}
+
+    pdfs = []
+    for entry in seen.values():
+        row     = entry["row"]
+        is_high = entry["is_high"]
+
+        priority_level = "high" if is_high else "low"
+        color_code     = "#8B0000" if is_high else "#006400"
+        priority_name  = "High" if is_high else "Low"
+
+        priority_data  = row_to_priority_data(row)
+        pdf_uri        = _strip_hyperlink(row.get("pdf_uri") or row.get("pdf_title") or "")
+        parent_uri     = _strip_hyperlink(row.get("parent_uri") or "")
 
         pdfs.append({
             "filename": pdf_uri.split("/")[-1] if pdf_uri else "Unknown",
@@ -224,8 +245,8 @@ def build_domain_data_for_email(domain: str, pdf_rows: list) -> dict:
             "parent_uri": parent_uri,
         })
 
-    priority_order = {"high": 0, "medium": 1, "low": 2}
-    pdfs.sort(key=lambda x: (priority_order[x["priority_level"]], -x["violations"]))
+    # High priority first, then sort by violation count descending within each group
+    pdfs.sort(key=lambda x: (0 if x["priority_level"] == "high" else 1, -x["violations"]))
 
     return {domain: {"pdfs": pdfs, "box_folder": None}}
 
