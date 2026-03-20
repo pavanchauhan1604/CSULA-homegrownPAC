@@ -27,7 +27,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import config
-from scripts.historical_analysis import collect_from_local
+from src.data_management.report_reader import collect_from_local
 
 _CHART_COLORS = [
     "#003262", "#C4820E", "#27ae60", "#e67e22",

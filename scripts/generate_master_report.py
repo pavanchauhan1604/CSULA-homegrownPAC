@@ -14,7 +14,6 @@ Usage
 
 from __future__ import annotations
 
-import re
 import sys
 import time
 from datetime import datetime
@@ -29,13 +28,12 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Font, PatternFill, Alignment
 
 import config
-from scripts.sharepoint_sync import read_unique_pdfs_sheet
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-_TS_RE = re.compile(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", re.IGNORECASE)
+from src.data_management.report_reader import (
+    parse_domain_excel,
+    find_latest_xlsx,
+    folder_to_display_name,
+    _TIMESTAMP_RE as _TS_RE,
+)
 
 SHEET_DATA = "Data"
 SHEET_DASHBOARD = "Dashboard"
@@ -163,51 +161,6 @@ def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_row
     ws.freeze_panes = "A11"
 
 
-def find_latest_xlsx(folder: Path) -> Path | None:
-    """Return the most recent .xlsx in *folder* by filename timestamp."""
-    def _key(p: Path):
-        m = _TS_RE.search(p.name)
-        return m.group(1) if m else ""
-    candidates = [p for p in folder.glob("*.xlsx") if not p.name.startswith("~$")]
-    return max(candidates, key=_key) if candidates else None
-
-
-def folder_to_display_name(folder_name: str) -> str:
-    """Convert folder name back to a readable domain string.
-
-    e.g. 'www-calstatela-edu_admissions' -> 'www.calstatela.edu_admissions'
-    Only the portion before the first '_' has dashes converted back to dots.
-    """
-    if "_" in folder_name:
-        domain_part, rest = folder_name.split("_", 1)
-        return f"{domain_part.replace('-', '.')}_{rest}"
-    return folder_name.replace("-", ".")
-
-
-def count_pdfs(pdf_rows: list) -> tuple[int, int]:
-    """Return (total_unique, high_priority_count) from Unique PDFs sheet rows.
-
-    High priority is defined as Low Priority == "No" — matching the definition
-    used by historical_analysis.py and the compliance % calculation so that all
-    reports are consistent. A PDF stays high priority until a content manager
-    explicitly marks it "Yes" (safe/done) in the Low Priority column.
-
-    pdf_uri cells are stored as =HYPERLINK(...) formulas in the Excel. Use
-    'fingerprint' (a plain-text column) as the dedup key so counts are correct
-    even when the file has never been opened in Excel (cached formula values = None).
-    """
-    seen: dict[str, bool] = {}  # fingerprint → is_high_priority
-    for idx, row in enumerate(pdf_rows):
-        key = str(row.get("fingerprint") or "").strip() or f"__row_{idx}"
-        raw_lp = row.get("Low Priority") or ""
-        is_high = isinstance(raw_lp, str) and raw_lp.strip().lower() == "no"
-        # If same fingerprint appears twice, mark high if either row is high
-        if key not in seen or is_high:
-            seen[key] = is_high
-
-    total = len(seen)
-    high = sum(1 for v in seen.values() if v)
-    return total, high
 
 
 # ---------------------------------------------------------------------------
@@ -238,13 +191,12 @@ def main():
             print(f"  [SKIP] No Excel found in: {folder.name}")
             continue
 
-        try:
-            pdf_rows = read_unique_pdfs_sheet(xlsx)
-        except Exception as e:
-            print(f"  [SKIP] Could not read {xlsx.name}: {e}")
+        metrics = parse_domain_excel(xlsx)
+        if not metrics:
+            print(f"  [SKIP] Could not read {xlsx.name}")
             continue
 
-        total, high = count_pdfs(pdf_rows)
+        total, high = metrics["unique_pdfs"], metrics["high_priority"]
         display = folder_to_display_name(folder.name)
         
         # Extract the logical scan date (YYYY-MM-DD) from the xlsx filename so that

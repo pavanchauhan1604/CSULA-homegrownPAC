@@ -54,12 +54,15 @@ if str(REPO_ROOT) not in sys.path:
 
 import config
 import openpyxl
-
-# Regex that matches the timestamp embedded in report filenames
-# e.g.  www.calstatela.edu_admissions-2026-01-25_06-26-57.xlsx
-_TIMESTAMP_RE = re.compile(
-    r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", re.IGNORECASE
+from src.data_management.report_reader import (
+    parse_domain_excel,
+    collect_from_local,
+    _parse_timestamp,
+    _TIMESTAMP_RE,
 )
+
+# Alias so collect_from_teams (below) keeps working without changes
+parse_excel_report = parse_domain_excel
 
 # Chart.js colour palette — CSULA navy first, then accessible contrasting colours
 _CHART_COLORS = [
@@ -67,206 +70,6 @@ _CHART_COLORS = [
     "#8e44ad", "#16a085", "#c0392b", "#2980b9",
     "#229954", "#d4ac0d",
 ]
-
-
-# =============================================================================
-# Excel parsing
-# =============================================================================
-
-def _col_index(header_row: tuple) -> dict[str, int]:
-    return {
-        str(h).strip(): i
-        for i, h in enumerate(header_row)
-        if h is not None
-    }
-
-
-def _int_val(raw: Any) -> int:
-    try:
-        return int(raw) if raw is not None else 0
-    except (ValueError, TypeError):
-        return 0
-
-
-def _float_val(raw: Any) -> float:
-    try:
-        return float(raw) if raw is not None else 0.0
-    except (ValueError, TypeError):
-        return 0.0
-
-
-def parse_excel_report(source: Path | bytes) -> dict | None:
-    """Parse one Excel accessibility report and return a metrics dict.
-
-    *source* can be a file Path or raw bytes (when downloaded from Teams).
-    Returns None when the file cannot be read or contains no data rows.
-    """
-    try:
-        if isinstance(source, (bytes, bytearray)):
-            wb = openpyxl.load_workbook(
-                io.BytesIO(source), read_only=True, data_only=True
-            )
-        else:
-            wb = openpyxl.load_workbook(source, read_only=True, data_only=True)
-    except Exception as exc:
-        print(f"    [WARN] Cannot open workbook: {exc}")
-        return None
-
-    try:
-        result: dict[str, Any] = {}
-
-        # ── Unique PDFs sheet — all metrics are based on deduplicated PDFs ────
-        # Fall back to Scanned PDFs only if Unique PDFs sheet is absent (old reports).
-        sheet_name = "Unique PDFs" if "Unique PDFs" in wb.sheetnames else "Scanned PDFs"
-        if sheet_name not in wb.sheetnames:
-            print(f"    [WARN] Neither 'Unique PDFs' nor 'Scanned PDFs' sheet found (sheets: {wb.sheetnames})")
-            wb.close()
-            return None
-
-        rows = list(wb[sheet_name].iter_rows(values_only=True))
-        if len(rows) < 2:
-            print(f"    [WARN] '{sheet_name}' sheet has no data rows")
-            wb.close()
-            return None
-
-        col = _col_index(rows[0])
-        v_idx  = col.get("violations")
-        ep_idx = col.get("Errors/Page")
-        lp_idx = col.get("Low Priority")
-
-        unique_pdfs = 0
-        compliant = 0
-        violations_list: list[int] = []
-        ep_list: list[float] = []
-        high_priority = 0
-
-        for row in rows[1:]:
-            if all(c is None for c in row):
-                continue
-            unique_pdfs += 1
-
-            v = _int_val(row[v_idx] if v_idx is not None else None)
-            violations_list.append(v)
-            if v == 0:
-                compliant += 1
-
-            if ep_idx is not None:
-                ep_list.append(_float_val(row[ep_idx]))
-
-            if lp_idx is not None:
-                raw_lp = row[lp_idx]
-                if isinstance(raw_lp, str) and raw_lp.strip().lower() == "no":
-                    high_priority += 1
-
-        low_priority_pdfs = unique_pdfs - high_priority
-        result.update(
-            total_scanned=unique_pdfs,
-            unique_pdfs=unique_pdfs,
-            compliant_scanned=low_priority_pdfs,
-            compliance_pct=round(low_priority_pdfs / unique_pdfs * 100, 1) if unique_pdfs else 0.0,
-            violations_total=sum(violations_list),
-            violations_avg=round(sum(violations_list) / len(violations_list), 1)
-            if violations_list
-            else 0.0,
-            high_priority=high_priority,
-            errors_per_page_avg=round(sum(ep_list) / len(ep_list), 2) if ep_list else 0.0,
-        )
-
-        # ── Failure sheet ─────────────────────────────────────────────────────
-        top_errors: dict[str, int] = {}
-        if "Failure" in wb.sheetnames:
-            f_rows = list(wb["Failure"].iter_rows(values_only=True))
-            if len(f_rows) > 1:
-                f_col = _col_index(f_rows[0])
-                msg_idx = f_col.get("error_message")
-                if msg_idx is not None:
-                    counter: Counter = Counter()
-                    for row in f_rows[1:]:
-                        if all(c is None for c in row):
-                            continue
-                        msg = row[msg_idx]
-                        if msg:
-                            counter[str(msg)[:150]] += 1
-                    top_errors = dict(counter.most_common(10))
-
-        result["top_errors"] = top_errors
-        return result
-
-    except Exception as exc:
-        print(f"    [WARN] Error parsing workbook content: {exc}")
-        return None
-    finally:
-        wb.close()
-
-
-# =============================================================================
-# Data collection helpers
-# =============================================================================
-
-def _parse_timestamp(filename: str) -> datetime | None:
-    m = _TIMESTAMP_RE.search(filename)
-    if not m:
-        return None
-    try:
-        return datetime.strptime(m.group(1), config.EXCEL_REPORT_TIMESTAMP_FORMAT)
-    except ValueError:
-        return None
-
-
-def collect_from_local(base_path: Path, domains: list[str] | None) -> dict[str, list[dict]]:
-    """Read scan reports from a local folder that mirrors the Teams structure.
-
-    When *domains* is None, every subdirectory that contains timestamped .xlsx
-    files is processed automatically (auto-discover mode).  When a list of
-    domain keys is given, only matching folders are processed (case-insensitive).
-    """
-    # Build a lower-case lookup: folder_name_lower → preferred display key
-    if domains is not None:
-        folder_to_domain = {
-            config.get_domain_folder_name(d).lower(): config.get_domain_folder_name(d)
-            for d in domains
-        }
-    else:
-        folder_to_domain = None  # auto-discover all folders
-
-    data: dict[str, list[dict]] = {}
-
-    for entry in sorted(base_path.iterdir()):
-        if not entry.is_dir():
-            continue
-
-        if folder_to_domain is not None:
-            # Filter mode: skip folders not in the requested domain list
-            if entry.name.lower() not in folder_to_domain:
-                continue
-            display_key = folder_to_domain[entry.name.lower()]
-        else:
-            # Auto-discover mode: use the folder name as-is
-            display_key = entry.name
-
-        scans: list[dict] = []
-        for xlsx in sorted(entry.glob("*.xlsx")):
-            if xlsx.name.startswith("~$"):
-                continue
-            ts = _parse_timestamp(xlsx.name)
-            if ts is None:
-                print(f"    [SKIP] {xlsx.name} — filename does not match timestamp pattern")
-                continue
-            print(f"    [READ] {xlsx.name}")
-            metrics = parse_excel_report(xlsx)
-            if metrics:
-                metrics["timestamp"] = ts
-                metrics["filename"] = xlsx.name
-                metrics["rel_path"] = str(xlsx.relative_to(base_path))
-                scans.append(metrics)
-            else:
-                print(f"    [SKIP] {xlsx.name} — could not extract metrics")
-
-        if scans:
-            scans.sort(key=lambda s: s["timestamp"])
-            data[display_key] = scans
-
-    return data
 
 
 def collect_from_teams(domains: list[str]) -> dict[str, list[dict]]:
