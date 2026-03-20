@@ -34,19 +34,19 @@ def generate_pdf_details_by_employee(employee_id):
     user_pdfs = {}
     
     # Get all PDFs for this user
-    with open('sql/get_pdfs_by_user_id.sql', 'r') as file:
+    with open(config.SQL_DIR / 'get_pdfs_by_user_id.sql', 'r') as file:
         sql_query = file.read()
         formatted_query = sql_query.format(employee_id=employee_id)
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(formatted_query)
         results = cursor.fetchall()
         domains = list(set([item[4] for item in results]))
 
     # Get detailed PDF reports for each domain
-    with open('sql/get_pdf_reports_by_site_name.sql') as pdf_reports_sql:
+    with open(config.SQL_DIR / 'get_pdf_reports_by_site_name.sql') as pdf_reports_sql:
         sql_query = pdf_reports_sql.read()
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
 
         for domain in domains:
@@ -111,17 +111,16 @@ def create_html_email_summary(data):
 
         unique_count = len({p.get("pdf_uri") for p in pdfs if p.get("pdf_uri")})
 
-        # Deduplicate by pdf_uri, keeping the highest priority per unique file
+        # Deduplicate by fingerprint (SHA-256), keeping the highest priority per unique file.
+        # Falls back to pdf_uri when fingerprint is absent so legacy callers still work.
         priority_order = {"high": 0, "medium": 1, "low": 2}
-        unique_pdfs_by_uri = {}
-        for p in pdfs:
-            uri = p.get("pdf_uri")
-            if not uri:
-                continue
-            existing = unique_pdfs_by_uri.get(uri)
+        unique_pdfs_by_fp: dict = {}
+        for idx, p in enumerate(pdfs):
+            fp = str(p.get("fingerprint") or "").strip() or p.get("pdf_uri") or f"__row_{idx}"
+            existing = unique_pdfs_by_fp.get(fp)
             if existing is None or priority_order[p["priority_level"]] < priority_order[existing["priority_level"]]:
-                unique_pdfs_by_uri[uri] = p
-        unique_pdfs = list(unique_pdfs_by_uri.values())
+                unique_pdfs_by_fp[fp] = p
+        unique_pdfs = list(unique_pdfs_by_fp.values())
 
         # Count by priority from unique files only
         high_count = sum(1 for p in unique_pdfs if p["priority_level"] == "high")
@@ -192,9 +191,9 @@ def template_email(data_dict):
 def build_emails():
 
     emails = []
-    with open('sql/get_all_users_with_pdf_files.sql') as pdf_reports_sql:
+    with open(config.SQL_DIR / 'get_all_users_with_pdf_files.sql') as pdf_reports_sql:
         sql_query = pdf_reports_sql.read()
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(sql_query)
         results = cursor.fetchall()

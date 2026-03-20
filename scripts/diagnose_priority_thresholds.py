@@ -22,24 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 
 import config
 from scripts.sharepoint_sync import read_unique_pdfs_sheet
-
-_TS_RE = __import__("re").compile(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", __import__("re").IGNORECASE)
-
-
-def _find_latest_xlsx(folder: Path) -> Path | None:
-    candidates = [p for p in folder.glob("*.xlsx") if not p.name.startswith("~$")]
-    return max(candidates, key=lambda p: (_TS_RE.search(p.name) or __import__("re").Match).group(1) if _TS_RE.search(p.name) else "") if candidates else None
-
-
-def _coerce_int(v) -> int:
-    try:
-        return int(float(str(v).strip()))
-    except Exception:
-        return 0
-
-
-def _coerce_bool(v) -> bool:
-    return str(v).strip().lower() in ("1", "true", "yes", "1.0")
+from src.data_management.report_reader import _coerce_int, _coerce_bool, find_latest_xlsx as _find_latest_xlsx
 
 
 def collect_rows(source_path: Path) -> list[dict]:

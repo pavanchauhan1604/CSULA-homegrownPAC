@@ -27,6 +27,7 @@ report shows identical counts for any given run.
 
 from __future__ import annotations
 
+import csv
 import io
 import json
 import re
@@ -425,3 +426,29 @@ def _js(obj: Any) -> str:
         .replace("<", "\\u003c")
         .replace(">", "\\u003e")
     )
+
+
+# =============================================================================
+# 9. Employee loader  (shared by send_emails.py and sharepoint_sync.py)
+# =============================================================================
+
+def load_employees(csv_path: Path) -> dict:
+    """Return {employee_id: {first_name, last_name, email}}.
+
+    employees.csv format (with header row):
+        Full Name, Employee ID, Email
+    """
+    employees: dict = {}
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        next(reader, None)  # skip header
+        for row in reader:
+            if not row or not row[1].strip():
+                continue
+            parts = row[0].strip().split(" ", 1)
+            employees[row[1].strip()] = {
+                "first_name": parts[0],
+                "last_name": parts[1] if len(parts) > 1 else "",
+                "email": row[2].strip() if len(row) > 2 else "",
+            }
+    return employees

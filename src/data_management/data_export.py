@@ -13,6 +13,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+import config
 from src.data_management.data_import import get_site_id_from_domain_name
 from src.core.filters import check_for_node, is_high_priority
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -20,9 +21,9 @@ from openpyxl.worksheet.datavalidation import DataValidation
 def get_all_sites():
 
 
-    with open("sql/get_all_sites.sql", 'r') as file:
+    with open(config.SQL_DIR / "get_all_sites.sql", 'r') as file:
         sql_query = file.read()
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(sql_query)
         results = cursor.fetchall()
@@ -36,11 +37,11 @@ def get_all_sites():
 
 def get_pdf_reports_by_site_name(site_name):
 
-    with open("sql/get_pdf_reports_by_site_name.sql", 'r') as file:
+    with open(config.SQL_DIR / "get_pdf_reports_by_site_name.sql", 'r') as file:
         sql_query = file.read()
         formatted_query = sql_query.format(site_name=site_name)
 
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
 
         # Execute the SQL query
@@ -67,10 +68,10 @@ def get_pdf_reports_by_site_name(site_name):
 
 def get_pdfs_by_site_name(site_name):
 
-    with open("sql/get_pdfs_by_domain_name.sql", 'r') as file:
+    with open(config.SQL_DIR / "get_pdfs_by_domain_name.sql", 'r') as file:
         sql_query = file.read()
         formatted_query = sql_query.format(site_name=site_name)
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(formatted_query)
         results = cursor.fetchall()
@@ -83,9 +84,9 @@ def get_pdfs_by_site_name(site_name):
 
 
 def get_all_users_with_pdfs():
-    with open("sql/get_all_users_with_pdf_files.sql", 'r') as file:
+    with open(config.SQL_DIR / "get_all_users_with_pdf_files.sql", 'r') as file:
         sql_query = file.read()
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
         cursor.execute(sql_query)
         results = cursor.fetchall()
@@ -98,14 +99,14 @@ def get_all_users_with_pdfs():
 
 def get_site_failures(site_name):
 
-    with open("sql/get_failures_by_site_id.sql", 'r') as file:
+    with open(config.SQL_DIR / "get_failures_by_site_id.sql", 'r') as file:
         sql_query = file.read()
 
         # need to get site id from site name
 
         site_id = get_site_id_from_domain_name(site_name.replace("-", "."))
         formatted_query = sql_query.format(site_id=site_id)
-        conn = sqlite3.connect("drupal_pdfs.db")
+        conn = sqlite3.connect(config.DATABASE_PATH)
         cursor = conn.cursor()
 
         cursor.execute(formatted_query)

@@ -16,6 +16,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+import config
+
 from src.core.conformance_checker import loop_through_files_in_folder
 from src.data_management.data_export import get_pdf_reports_by_site_name
 from src.data_management.data_import import get_site_id_by_domain_name, mark_pdf_as_removed
@@ -41,7 +43,7 @@ def delete_scans_files(root_folder):
 
 
 def remove_timestamps_from_parent_urls():
-    conn = sqlite3.connect('drupal_pdfs.db')
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
     pdfs = cursor.execute("SELECT * FROM drupal_pdf_files").fetchall()
 
@@ -61,7 +63,7 @@ def remove_timestamps_from_parent_urls():
     conn.close()
 
 def strip_trailing_items_from_pdf_urls():
-    conn = sqlite3.connect('drupal_pdfs.db')
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
     pdfs = cursor.execute("SELECT * FROM drupal_pdf_files").fetchall()
 
@@ -91,12 +93,12 @@ def delete_duplicate_entries():
     The site names are retrieved by executing the SQL query stored in get_all_sites.sql.
     """
     # Connect to the SQLite database.
-    conn = sqlite3.connect('drupal_pdfs.db')
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
 
     # Read the get_all_sites.sql file, which contains:
     # select domain_name from drupal_site;
-    with open("sql/get_all_sites.sql", "r") as f:
+    with open(config.SQL_DIR / "get_all_sites.sql", "r") as f:
         get_sites_query = f.read().strip()
 
     # Execute the query to fetch all site domain names.
@@ -104,7 +106,7 @@ def delete_duplicate_entries():
     sites = cursor.fetchall()  # Each row is a tuple (domain_name,)
 
     # Read the delete_duplicates.sql file which contains our delete query template.
-    with open("sql/delete_duplicates.sql", "r") as f:
+    with open(config.SQL_DIR / "delete_duplicates.sql", "r") as f:
         delete_query_template = f.read()
 
     # Loop through each site and execute the delete query with the proper substitution.

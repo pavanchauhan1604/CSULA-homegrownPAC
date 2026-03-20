@@ -9,7 +9,9 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from src.data_management.data_export import get_all_sites, get_pdf_reports_by_site_name
+from src.core.filters import is_high_priority
 import sqlite3
+import config
 
 # Setup Jinja2 Environment (Global)
 env = Environment(loader=FileSystemLoader('.'))
@@ -23,11 +25,11 @@ def get_all_pdf_stats():
       - total_high_priority
     """
     # Open and read the SQL query from file.
-    with open("sql/sum_all_pdf_stats.sql", "r") as file:
+    with open(config.SQL_DIR / "sum_all_pdf_stats.sql", "r") as file:
         query = file.read()
 
     # Connect to the SQLite database.
-    conn = sqlite3.connect('drupal_pdfs.db')
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
 
     # Execute the SQL query.
@@ -53,10 +55,10 @@ def get_all_sites_with_pdfs():
     Reads the SQL query from 'sql/get_all_sites_with_pdfs.sql' and executes it against the 'drupal_pdfs.db' database.
     Returns a list of dictionaries with each site's domain name and the PDF count.
     """
-    with open("sql/get_all_sites_with_pdfs.sql", "r") as file:
+    with open(config.SQL_DIR / "get_all_sites_with_pdfs.sql", "r") as file:
         query = file.read()
 
-    conn = sqlite3.connect('drupal_pdfs.db')
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
@@ -84,23 +86,6 @@ def fetch_pdf_reports():
         site_pdf_reports[site] = get_pdf_reports_by_site_name(site)
 
     return site_pdf_reports
-
-def is_high_priority(data):
-    """Determine if a PDF requires review based on accessibility flags."""
-    if not isinstance(data, dict):
-        data = dict(data._asdict())
-
-    if data['tagged'] == 0:
-        return True
-    if data['pdf_text_type'] == 'Image Only':
-        return True
-    if data['approved_pdf_exporter']:
-        return False
-    if int(data['page_count']) > 0 and round(int(data['failed_checks']) / int(data['page_count'])) > 20:
-        return True
-    if data['has_form'] == 1 and int(data['page_count']) > 0 and round(int(data['failed_checks']) / int(data['page_count'])) > 3:
-        return True
-    return False
 
 def sanitize_pdf_data(pdf_report):
     """Ensure all required fields have default values and check high priority status."""

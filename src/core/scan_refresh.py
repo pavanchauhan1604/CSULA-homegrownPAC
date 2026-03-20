@@ -8,6 +8,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+import config
 from src.data_management.data_export import get_pdfs_by_site_name
 from crawlers.sf_state_pdf_scan.sf_state_pdf_scan.box_handler import box_share_pattern_match, download_from_box
 
@@ -64,7 +65,7 @@ def refresh_status(box_only=False, site=None):
     Parameters:
         box_only (bool): If True, only check PDF URIs that are Box share links. Defaults to False.
     """
-    conn = sqlite3.connect('drupal_pdfs.db')
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
     pdfs = cursor.execute("SELECT * FROM drupal_pdf_files").fetchall()
 

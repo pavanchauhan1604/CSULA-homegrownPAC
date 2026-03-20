@@ -20,7 +20,6 @@ Usage
 """
 
 import argparse
-import csv
 import sys
 from pathlib import Path
 
@@ -31,6 +30,7 @@ if str(REPO_ROOT) not in sys.path:
 import config
 from src.communication.communications import _display_domain
 from src.communication.outlook_sender import OutlookSendOptions, send_emails_batch_outlook
+from src.data_management.report_reader import find_latest_xlsx, folder_to_display_name, load_employees
 
 
 # ---------------------------------------------------------------------------
@@ -39,46 +39,6 @@ from src.communication.outlook_sender import OutlookSendOptions, send_emails_bat
 
 def _is_windows() -> bool:
     return sys.platform.startswith("win")
-
-
-def load_employees(csv_path: Path) -> dict:
-    """Returns {employee_id: {first_name, last_name, email}}.
-
-    employees.csv format (with header row):
-        Full Name, Employee ID, Email
-    """
-    employees = {}
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        next(reader, None)  # skip header
-        for row in reader:
-            if not row or not row[1].strip():
-                continue
-            parts = row[0].strip().split(" ", 1)
-            employees[row[1].strip()] = {
-                "first_name": parts[0],
-                "last_name": parts[1] if len(parts) > 1 else "",
-                "email": row[2].strip() if len(row) > 2 else "",
-            }
-    return employees
-
-
-def find_latest_xlsx(folder: Path):
-    """Return the .xlsx with the latest timestamp in its filename (ignoring ~$ lock files).
-
-    Sorts by the YYYY-MM-DD_HH-MM-SS timestamp embedded in the filename so that
-    OneDrive sync order / file mtime quirks don't pick the wrong file.
-    Falls back to mtime for any file that lacks a timestamp in its name.
-    """
-    import re
-    _TS_RE = re.compile(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", re.IGNORECASE)
-
-    def _sort_key(p: Path):
-        m = _TS_RE.search(p.name)
-        return m.group(1) if m else ""
-
-    candidates = [p for p in folder.glob("*.xlsx") if not p.name.startswith("~$")]
-    return max(candidates, key=_sort_key) if candidates else None
 
 
 def folder_to_domain_display(folder_name: str) -> str:
@@ -90,7 +50,7 @@ def folder_to_domain_display(folder_name: str) -> str:
     for domain in config.DOMAINS:
         if config.get_domain_folder_name(domain) == folder_name:
             return _display_domain(domain)
-    return folder_name.replace("-", ".").replace("_", "/")
+    return folder_to_display_name(folder_name)
 
 
 # ---------------------------------------------------------------------------

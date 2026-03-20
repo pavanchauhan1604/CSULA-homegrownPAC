@@ -135,7 +135,7 @@ def scan_pdfs(directory, domain_id):
                     # Still need to add the record for this parent_uri if it doesn't exist
                     if not check_if_pdf_report_exists(file_url, loc):
                         # Get the existing report data and add record for this parent_uri
-                        conn = sqlite3.connect('drupal_pdfs.db')
+                        conn = sqlite3.connect(config.DATABASE_PATH)
                         cursor = conn.cursor()
                         existing_pdf = cursor.execute(
                             "SELECT file_hash FROM drupal_pdf_files WHERE pdf_uri = ? LIMIT 1",
@@ -196,12 +196,12 @@ def scan_pdfs(directory, domain_id):
 
 def mark_replaced_pdfs_as_removed(domain_id):
 
-    with open("sql/update_scan_by_removing_old_duplicates.sql", "r") as file:
+    with open(config.SQL_DIR / "update_scan_by_removing_old_duplicates.sql", "r") as file:
         query = file.read()
 
     formatted_query = query.format(site_name=domain_id)
     print(formatted_query)
-    conn = sqlite3.connect('drupal_pdfs.db')
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute(formatted_query)
 

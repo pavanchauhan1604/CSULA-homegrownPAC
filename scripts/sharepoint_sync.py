@@ -48,6 +48,7 @@ from src.communication.communications import (
 from src.data_management.report_reader import (
     find_latest_xlsx,
     folder_to_display_name,
+    load_employees,
     xlsx_report_date,
     read_pdf_rows,
     row_to_priority_data,
@@ -58,28 +59,6 @@ from src.data_management.report_reader import (
 # ---------------------------------------------------------------------------
 # CSV loaders
 # ---------------------------------------------------------------------------
-
-def load_employees(csv_path: Path) -> dict:
-    """Returns {employee_id: {first_name, last_name, email}}.
-
-    employees.csv format (with header row):
-        Full Name, Employee ID, Email
-    """
-    employees = {}
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        next(reader, None)  # skip header
-        for row in reader:
-            if not row or not row[1].strip():
-                continue
-            parts = row[0].strip().split(" ", 1)
-            employees[row[1].strip()] = {
-                "first_name": parts[0],
-                "last_name": parts[1] if len(parts) > 1 else "",
-                "email": row[2].strip() if len(row) > 2 else "",
-            }
-    return employees
-
 
 def load_site_assignments(csv_path: Path) -> dict:
     """Returns {security_group: [employee_id, ...]}.
