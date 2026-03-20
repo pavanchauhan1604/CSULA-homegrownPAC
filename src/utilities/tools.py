@@ -7,6 +7,7 @@ import shutil
 import zipfile
 from datetime import datetime
 
+import sqlite3
 import requests
 from urllib.parse import unquote
 from openpyxl import load_workbook
@@ -81,8 +82,6 @@ def strip_trailing_items_from_pdf_urls():
 
     conn.commit()
     conn.close()
-
-import sqlite3
 
 def delete_duplicate_entries():
     """

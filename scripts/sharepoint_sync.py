@@ -141,6 +141,7 @@ def build_domain_data_for_email(domain: str, pdf_rows: list) -> dict:
         pdfs.append({
             "filename": pdf_uri.split("/")[-1] if pdf_uri else "Unknown",
             "pdf_uri": pdf_uri,
+            "fingerprint": str(row.get("fingerprint") or "").strip(),
             "violations": priority_data["violations"],
             "failed_checks": priority_data["failed_checks"],
             "page_count": priority_data["page_count"],

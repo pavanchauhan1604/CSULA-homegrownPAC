@@ -21,8 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import config
-from scripts.sharepoint_sync import read_unique_pdfs_sheet
-from src.data_management.report_reader import _coerce_int, _coerce_bool, find_latest_xlsx as _find_latest_xlsx
+from src.data_management.report_reader import _coerce_int, _coerce_bool, find_latest_xlsx as _find_latest_xlsx, read_pdf_rows as read_unique_pdfs_sheet
 
 
 def collect_rows(source_path: Path) -> list[dict]:
