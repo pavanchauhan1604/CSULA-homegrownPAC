@@ -59,6 +59,7 @@ from src.data_management.report_reader import (
     collect_from_local,
     _parse_timestamp,
     _TIMESTAMP_RE,
+    _js,
 )
 
 # Alias so collect_from_teams (below) keeps working without changes
@@ -150,20 +151,6 @@ def collect_from_teams(domains: list[str]) -> dict[str, list[dict]]:
 # =============================================================================
 # HTML report generation
 # =============================================================================
-
-def _js(obj: Any) -> str:
-    """Serialize *obj* to compact JSON safe for embedding in a <script> context.
-
-    Escapes < > & so that substrings like </script> or <!-- in error-message
-    text cannot break the enclosing HTML <script> tag.
-    """
-    return (
-        json.dumps(obj, default=str)
-        .replace("&", "\\u0026")
-        .replace("<", "\\u003c")
-        .replace(">", "\\u003e")
-    )
-
 
 def _anchor(domain: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "-", domain)

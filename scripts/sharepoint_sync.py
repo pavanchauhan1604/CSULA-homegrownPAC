@@ -39,14 +39,19 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import openpyxl
-
 import config
-from src.core.filters import get_priority_level
 from src.communication.communications import (
     template_email,
     create_html_email_summary,
     _display_domain,
+)
+from src.data_management.report_reader import (
+    find_latest_xlsx,
+    folder_to_display_name,
+    xlsx_report_date,
+    read_pdf_rows,
+    row_to_priority_data,
+    _strip_hyperlink,
 )
 
 
@@ -117,85 +122,6 @@ def load_domain_security_groups(csv_path: Path) -> dict:
     return result
 
 
-# ---------------------------------------------------------------------------
-# Excel reader
-# ---------------------------------------------------------------------------
-
-def read_unique_pdfs_sheet(xlsx_path: Path) -> list:
-    """Read 'Unique PDFs' sheet and return list of row dicts keyed by header."""
-    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
-    if "Unique PDFs" not in wb.sheetnames:
-        return []
-    ws = wb["Unique PDFs"]
-    rows = list(ws.iter_rows(values_only=True))
-    if not rows:
-        return []
-    headers = [str(h).strip() if h is not None else "" for h in rows[0]]
-    result = []
-    for row in rows[1:]:
-        if not any(cell is not None for cell in row):
-            continue
-        result.append(dict(zip(headers, row)))
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Priority derivation from Excel row
-# ---------------------------------------------------------------------------
-
-def _coerce_int(val, fallback: int = 0) -> int:
-    try:
-        if val is None or str(val).strip() in ("", "None"):
-            return fallback
-        return int(float(val))
-    except (ValueError, TypeError):
-        return fallback
-
-
-def _coerce_bool(val) -> bool:
-    """Convert Excel cell value to bool. Handles 0/1, True/False, Yes/No."""
-    if val is None:
-        return False
-    s = str(val).strip().lower()
-    return s in ("1", "true", "yes", "1.0")
-
-
-def row_to_priority_data(row: dict) -> dict:
-    """Build the dict expected by filters.get_priority_level() from an Excel row."""
-    tagged = 1 if _coerce_bool(row.get("tagged")) else 0
-
-    # failed_checks may have been converted to Yes/No by a known export quirk.
-    # Fall back to using the pre-computed Errors/Page column × page_count.
-    failed_raw = row.get("failed_checks")
-    if str(failed_raw).strip().lower() in ("yes", "no", ""):
-        # Reconstruct from Errors/Page * page_count as best approximation.
-        errors_per_page = _coerce_int(row.get("Errors/Page", 0))
-        page_count = _coerce_int(row.get("page_count", 0))
-        failed_checks = errors_per_page * page_count if page_count > 0 else 0
-    else:
-        failed_checks = _coerce_int(failed_raw)
-
-    return {
-        "tagged": tagged,
-        "pdf_text_type": str(row.get("pdf_text_type") or ""),
-        "violations": _coerce_int(row.get("violations", 0)),
-        "failed_checks": failed_checks,
-        "page_count": _coerce_int(row.get("page_count", 0)),
-        "has_form": 1 if _coerce_bool(row.get("has_form")) else 0,
-        "approved_pdf_exporter": _coerce_bool(row.get("approved_pdf_exporter")),
-    }
-
-
-def _strip_hyperlink(val) -> str:
-    """Extract bare URL from an Excel HYPERLINK formula string or return as-is."""
-    if val is None:
-        return ""
-    s = str(val).strip()
-    if s.startswith("=HYPERLINK("):
-        import re
-        m = re.search(r'=HYPERLINK\("([^"]+)"', s)
-        return m.group(1) if m else s
-    return s
 
 
 # ---------------------------------------------------------------------------
@@ -251,44 +177,6 @@ def build_domain_data_for_email(domain: str, pdf_rows: list) -> dict:
     return {domain: {"pdfs": pdfs, "box_folder": None}}
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-import re as _re
-from datetime import datetime as _dt
-
-_TS_RE = _re.compile(r"(\d{4}-\d{2}-\d{2})_\d{2}-\d{2}-\d{2}\.xlsx$", _re.IGNORECASE)
-_TS_SORT_RE = _re.compile(r"(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.xlsx$", _re.IGNORECASE)
-
-
-def _find_latest_xlsx(folder: Path) -> Path | None:
-    """Return the most recent .xlsx in *folder* sorted by filename timestamp."""
-    def _key(p: Path):
-        m = _TS_SORT_RE.search(p.name)
-        return m.group(1) if m else ""
-    candidates = [p for p in folder.glob("*.xlsx") if not p.name.startswith("~$")]
-    return max(candidates, key=_key) if candidates else None
-
-
-def _xlsx_report_date(xlsx_path: Path) -> str:
-    """Extract a human-readable date from an Excel filename timestamp."""
-    m = _TS_RE.search(xlsx_path.name)
-    if m:
-        return _dt.strptime(m.group(1), "%Y-%m-%d").strftime("%B %d, %Y")
-    return xlsx_path.stem
-
-
-def _folder_to_domain_key(folder_name: str) -> str:
-    """Convert an OneDrive folder name back to a domain key.
-
-    e.g. 'www-calstatela-edu_admissions' -> 'www.calstatela.edu_admissions'
-    Only the part before the first '_' has dashes converted to dots.
-    """
-    if "_" in folder_name:
-        domain_part, rest = folder_name.split("_", 1)
-        return f"{domain_part.replace('-', '.')}_{rest}"
-    return folder_name.replace("-", ".")
 
 
 # ---------------------------------------------------------------------------
@@ -331,18 +219,18 @@ def generate_drafts_for_folder(
     previous run) and writes one HTML draft per assigned employee.
     Returns True if at least one draft was written.
     """
-    xlsx_path = _find_latest_xlsx(folder)
+    xlsx_path = find_latest_xlsx(folder)
     if not xlsx_path:
         print(f"  [SKIP] No Excel in OneDrive folder: {folder.name}")
         return False
 
-    pdf_rows = read_unique_pdfs_sheet(xlsx_path)
+    pdf_rows = read_pdf_rows(xlsx_path)
     if not pdf_rows:
         print(f"  [WARN] 'Unique PDFs' sheet is empty — no drafts generated")
         return True
 
     # Resolve security group: prefer sites.csv, fall back to Excel column
-    domain_key = _folder_to_domain_key(folder.name)
+    domain_key = folder_to_display_name(folder.name)
     security_group = domain_groups.get(domain_key, "")
     if not security_group:
         security_group = str(pdf_rows[0].get("security_group_name") or "").strip()
@@ -355,7 +243,7 @@ def generate_drafts_for_folder(
     domain_data = build_domain_data_for_email(domain_key, pdf_rows)
     html_summary = create_html_email_summary(domain_data)
     display = _display_domain(domain_key)
-    report_date = _xlsx_report_date(xlsx_path)
+    report_date = xlsx_report_date(xlsx_path)
 
     drafts_folder = folder / "Mail Drafts"
     drafts_folder.mkdir(exist_ok=True)

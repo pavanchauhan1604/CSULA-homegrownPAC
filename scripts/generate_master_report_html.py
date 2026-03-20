@@ -27,7 +27,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import config
-from src.data_management.report_reader import collect_from_local
+from src.data_management.report_reader import collect_from_local, _js
 
 _CHART_COLORS = [
     "#003262", "#C4820E", "#27ae60", "#e67e22",
@@ -38,16 +38,6 @@ _CHART_COLORS = [
 # =============================================================================
 # Helpers
 # =============================================================================
-
-def _js(obj: Any) -> str:
-    """HTML-safe JSON for <script> blocks — escapes <, >, & to prevent tag breakage."""
-    return (
-        json.dumps(obj, default=str)
-        .replace("&", "\\u0026")
-        .replace("<", "\\u003c")
-        .replace(">", "\\u003e")
-    )
-
 
 def _anchor(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "-", s)
