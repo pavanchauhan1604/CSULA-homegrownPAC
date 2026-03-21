@@ -10,7 +10,18 @@ All other modules should import from this file instead of hardcoding paths.
 """
 
 import os
+import platform
 from pathlib import Path
+
+# =============================================================================
+# MACHINE DETECTION
+# =============================================================================
+
+# "mac" on macOS (Darwin), "windows" on Windows.
+# Used to branch platform-specific paths and behaviour (e.g. VeraPDF command,
+# parallel scanning). All other paths (DATABASE_PATH, PDF_SITES_FOLDER,
+# TEAMS_ONEDRIVE_PATH) resolve identically on both platforms.
+MACHINE = "mac" if platform.system() == "Darwin" else "windows"
 
 # =============================================================================
 # PROJECT PATHS
@@ -110,9 +121,13 @@ SCANS_OUTPUT_FORMAT = str(PDF_SITES_FOLDER / "{}")
 # =============================================================================
 
 # VeraPDF command (should be in PATH, or provide full path here)
-# Default assumes standard installer location: %USERPROFILE%\veraPDF\verapdf.bat
-# setup.ps1 will auto-update this to the correct path for the current machine.
-VERAPDF_COMMAND = str(Path.home() / "veraPDF" / "verapdf.bat")
+# Mac:     ~/veraPDF/verapdf     (shell script, no .bat extension)
+# Windows: ~/veraPDF/verapdf.bat (batch file)
+# setup.ps1 / setup_mac.sh will auto-update this to the correct path.
+if MACHINE == "mac":
+    VERAPDF_COMMAND = str(Path.home() / "veraPDF" / "verapdf")
+else:
+    VERAPDF_COMMAND = str(Path.home() / "veraPDF" / "verapdf.bat")
 
 # VeraPDF validation profile (ua1, ua2, etc.)
 VERAPDF_PROFILE = "ua1"

@@ -221,6 +221,89 @@ What `master_report.html` contains:
 
 Run `.\setup.ps1` from the project root. See [setup/WINDOWS_INSTALLATION_GUIDE.md](setup/WINDOWS_INSTALLATION_GUIDE.md) for details.
 
+### Running on Mac (Mac Studio / Apple Silicon)
+
+Everything except email sending runs natively on macOS. Email sending (`send_emails.py` / `outlook_sender.py`) requires Windows + Outlook COM and stays on the university Windows machine.
+
+**Step 1 — Clone repo and run setup (first pass)**
+
+```zsh
+git clone https://github.com/pavanchauhan1604/CSULA-homegrownPAC.git
+cd CSULA-homegrownPAC
+
+chmod +x scripts/setup_mac.sh
+./scripts/setup_mac.sh
+```
+
+This installs Python deps and sets up the database schema. It will also print `[!]` warnings for anything still missing (Java, VeraPDF, OneDrive sync). The script is safe to re-run — do so after each fix below.
+
+**Step 2 — Install Java 21+ (required by VeraPDF)**
+
+`setup_mac.sh` attempts to install Java 21 automatically via Homebrew if it is missing. If Homebrew itself is not installed yet, the script prints the one-liner to install it. After Java installs, open a new terminal tab and re-run setup so `java` is visible on `PATH`.
+
+Manual install if needed: download the `.pkg` from **https://adoptium.net/** (Eclipse Temurin 21 LTS). After installing, `java -version` should print `21.x`.
+
+**Step 3 — Install VeraPDF**
+
+Download the **CLI** build (`.zip`, not the GUI installer) from **https://verapdf.org/software/**, then:
+
+```zsh
+# Extract the zip — inside you'll find a folder called veraPDF
+mv ~/Downloads/veraPDF ~/veraPDF
+chmod +x ~/veraPDF/verapdf
+~/veraPDF/verapdf --version   # should print the version
+```
+
+**Step 4 — Re-run setup to confirm**
+
+```zsh
+./scripts/setup_mac.sh
+```
+
+All checks should now pass (`[OK]` for Java, VeraPDF, and OneDrive). If OneDrive is still flagged, sync the *PDF Accessibility Checker (PAC) - General* Teams channel Files tab via the OneDrive menu bar app, then re-run.
+
+**Daily workflow**
+
+```zsh
+# Activate venv (optional — run_workflow.sh uses .venv automatically)
+source .venv/bin/activate
+
+# Full pipeline: crawl → scan (parallel) → Excel
+./scripts/run_workflow.sh
+
+# Then sync to OneDrive and generate all reports
+python scripts/sharepoint_sync.py
+python scripts/historical_analysis.py
+python scripts/generate_master_report.py
+python scripts/generate_master_report_html.py
+
+# One-liner
+./scripts/run_workflow.sh && \
+  python scripts/sharepoint_sync.py && \
+  python scripts/historical_analysis.py && \
+  python scripts/generate_master_report.py && \
+  python scripts/generate_master_report_html.py
+```
+
+**Test a single domain end-to-end**
+
+```zsh
+./scripts/run_workflow.sh --domain calstatela.edu_ecst
+```
+
+`--domain` limits Steps 1 (spider generation) and 2 (crawl) to one domain. The scan and Excel steps still process all domains in the database; run them separately per-domain if needed.
+
+**Mac-specific behaviour**
+
+| Feature | Mac | Windows |
+|---|---|---|
+| VeraPDF command | `~/veraPDF/verapdf` (shell script) | `~/veraPDF/verapdf.bat` (batch file) |
+| Domain scanning | Parallel — `ProcessPoolExecutor` with `min(domains, cpu_count × 2)` workers | Sequential (spawn overhead not worth it) |
+| SQLite | WAL mode enabled — safe concurrent readers/writers | WAL mode enabled |
+| Email sending | Not supported (Outlook COM = Windows only) | Full support via `send_emails.py` |
+
+On a Mac Studio M1 Ultra (20 CPU cores), the parallel scan uses up to 40 worker processes — one per domain, each with its own temp file pair (`temp_<pid>.pdf`) so concurrent workers never collide on disk.
+
 ### Teams / OneDrive Setup
 
 `setup.ps1` auto-detects and writes `TEAMS_ONEDRIVE_PATH` in `config.py` if the *"PDF Accessibility Checker (PAC) - General"* Teams channel folder is already synced via OneDrive. Domain subfolders are created automatically on first upload.

@@ -170,12 +170,17 @@ class {class_name}(scrapy.Spider):
 """
 
 
-def generate_spiders():
-    """Generate spider files for all domains in the database (or config.DOMAINS as fallback)."""
-    
+def generate_spiders(single_domain=None):
+    """Generate spider files for all domains in the database (or config.DOMAINS as fallback).
+
+    Args:
+        single_domain: Optional domain key (e.g. "calstatela.edu_ecst") to limit
+                       generation to a single spider. When None all domains are processed.
+    """
+
     output_dir = os.path.join(project_root, "crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders")
     os.makedirs(output_dir, exist_ok=True)
-    
+
     try:
         all_sites = get_all_sites_domain_names()
         if not all_sites:
@@ -184,6 +189,12 @@ def generate_spiders():
         print(f"  ⚠️  Could not load sites from database ({e}), falling back to config.DOMAINS")
         import config as _config
         all_sites = list(_config.DOMAINS)
+
+    if single_domain:
+        all_sites = [s for s in all_sites if s == single_domain]
+        if not all_sites:
+            print(f"  ✗ Domain '{single_domain}' not found in database or config.DOMAINS")
+            return 0, 1
     
     print(f"Generating spiders for {len(all_sites)} domains...")
     
@@ -274,5 +285,15 @@ def generate_spiders():
 
 
 if __name__ == "__main__":
-    success_count, fail_count = generate_spiders()
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate Scrapy spiders from domain list.")
+    parser.add_argument(
+        "--domain",
+        default=None,
+        metavar="DOMAIN_KEY",
+        help="Limit to a single domain key, e.g. calstatela.edu_ecst. "
+             "Omit to generate spiders for all domains.",
+    )
+    args = parser.parse_args()
+    success_count, fail_count = generate_spiders(single_domain=args.domain)
     sys.exit(0 if fail_count == 0 else 1)

@@ -108,6 +108,14 @@ def create_all_pdf_reports():
         c. Generates an accessibility report using the `create_verapdf_report` function.
         d. Adds the report to the database by calling the `add_pdf_file_to_database` function if successful, or logs a failure by calling the `add_pdf_report_failure` function if not.
 
+    On Mac (config.MACHINE == "mac") domain scanning runs in parallel using
+    ProcessPoolExecutor with up to min(num_domains, cpu_count * 2) workers.
+    Each worker uses a process-specific temp file path so concurrent scans
+    never collide on disk. SQLite WAL mode allows safe concurrent writers.
+
+    On Windows the existing sequential loop is preserved (ProcessPoolExecutor
+    spawn overhead and .bat VeraPDF invocation make parallelism slower there).
+
     Parameters:
     None
 
@@ -117,11 +125,26 @@ def create_all_pdf_reports():
 
     print("Starting full PDF scan...")
 
+    # Determine worker count: parallel on Mac, sequential on Windows.
+    if config.MACHINE == "mac":
+        domain_count = sum(
+            1 for f in os.listdir(pdf_sites_folder)
+            if os.path.isdir(os.path.join(pdf_sites_folder, f))
+        )
+        # 2× cpu_count because the work is mostly I/O-bound (network downloads
+        # + VeraPDF subprocess waits), so workers spend most of their time
+        # blocked rather than burning CPU. Capped at the number of domains
+        # so we never spin up idle processes.
+        workers = min(domain_count, (os.cpu_count() or 1) * 2)
+        print(f"Mac detected — scanning {domain_count} domains with {workers} parallel workers (cpu_count={os.cpu_count()})")
+    else:
+        workers = 1
+
     ##
     ## Make sure to back up the database before running this function
     ##
     # Import pdfs and test for accessibility
-    full_pdf_scan(pdf_sites_folder)
+    full_pdf_scan(pdf_sites_folder, workers=workers)
     # remove 404s and set as 404
     refresh_status()
     # compare the pdfs in the folder to the database and mark as removed if not in the folder

@@ -24,6 +24,7 @@ def get_all_sites():
     with open(config.SQL_DIR / "get_all_sites.sql", 'r') as file:
         sql_query = file.read()
         conn = sqlite3.connect(config.DATABASE_PATH)
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
         cursor.execute(sql_query)
         results = cursor.fetchall()
@@ -42,6 +43,7 @@ def get_pdf_reports_by_site_name(site_name):
         formatted_query = sql_query.format(site_name=site_name)
 
         conn = sqlite3.connect(config.DATABASE_PATH)
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
 
         # Execute the SQL query
@@ -72,6 +74,7 @@ def get_pdfs_by_site_name(site_name):
         sql_query = file.read()
         formatted_query = sql_query.format(site_name=site_name)
         conn = sqlite3.connect(config.DATABASE_PATH)
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
         cursor.execute(formatted_query)
         results = cursor.fetchall()
@@ -87,6 +90,7 @@ def get_all_users_with_pdfs():
     with open(config.SQL_DIR / "get_all_users_with_pdf_files.sql", 'r') as file:
         sql_query = file.read()
         conn = sqlite3.connect(config.DATABASE_PATH)
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
         cursor.execute(sql_query)
         results = cursor.fetchall()
@@ -107,6 +111,7 @@ def get_site_failures(site_name):
         site_id = get_site_id_from_domain_name(site_name.replace("-", "."))
         formatted_query = sql_query.format(site_id=site_id)
         conn = sqlite3.connect(config.DATABASE_PATH)
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
 
         cursor.execute(formatted_query)

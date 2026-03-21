@@ -136,6 +136,7 @@ def scan_pdfs(directory, domain_id):
                     if not check_if_pdf_report_exists(file_url, loc):
                         # Get the existing report data and add record for this parent_uri
                         conn = sqlite3.connect(config.DATABASE_PATH)
+                        conn.execute("PRAGMA journal_mode=WAL")
                         cursor = conn.cursor()
                         existing_pdf = cursor.execute(
                             "SELECT file_hash FROM drupal_pdf_files WHERE pdf_uri = ? LIMIT 1",
@@ -202,6 +203,7 @@ def mark_replaced_pdfs_as_removed(domain_id):
     formatted_query = query.format(site_name=domain_id)
     print(formatted_query)
     conn = sqlite3.connect(config.DATABASE_PATH)
+    conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
     cursor.execute(formatted_query)
 
@@ -262,24 +264,56 @@ def refresh_existing_pdf_reports(single_domain=None):
 
 
 
-def full_pdf_scan(site_folders):
+def _scan_domain_worker(args):
     """
-    Scans all subdirectories within the given directory for PDF files and generates accessibility reports.
+    Picklable top-level worker for ProcessPoolExecutor (Mac parallel scanning).
+
+    Each worker process overrides the module-level temp_pdf_path /
+    temp_profile_path globals with process-specific paths so that concurrent
+    workers never write to the same temp file on disk.
+    """
+    import os as _os
+    import config as _config
+    global temp_pdf_path, temp_profile_path
+    folder_path, domain_id = args
+    pid = _os.getpid()
+    temp_pdf_path = str(_config.TEMP_DIR / f"temp_{pid}.pdf")
+    temp_profile_path = str(_config.TEMP_DIR / f"temp_profile_{pid}.json")
+    scan_pdfs(folder_path, domain_id)
+
+
+def full_pdf_scan(site_folders, workers=1):
+    """
+    Scans all subdirectories within the given directory for PDF files and
+    generates accessibility reports.
 
     Parameters:
-    site_folders (str): The path to the directory containing subdirectories to be scanned.
+    site_folders (str): The path to the directory containing subdirectories
+                        to be scanned.
+    workers (int):      Number of parallel worker processes. 1 = sequential
+                        (Windows default). >1 uses ProcessPoolExecutor (Mac).
+                        Each worker uses process-specific temp file paths so
+                        concurrent scans never collide on disk.
 
     Process:
-    1. Iterates over each folder (subdirectory) within the `site_folders` directory.
-    2. Retrieves the domain ID for each folder by calling `get_site_id_by_domain_name`.
-    3. If a valid domain ID is found, calls the `scan_pdfs` function, passing the path to the current folder and the domain ID as arguments.
+    1. Iterates over each folder (subdirectory) within `site_folders`.
+    2. Retrieves the domain ID for each folder via get_site_id_by_domain_name.
+    3. Calls scan_pdfs for each domain, sequentially or in parallel.
     """
+    domain_args = []
     for folder in os.listdir(site_folders):
-
         domain_id = get_site_id_by_domain_name(folder)
         print(folder, domain_id, os.path.join(site_folders, folder))
         if domain_id is not None:
-            scan_pdfs(os.path.join(site_folders, folder), domain_id)
+            domain_args.append((os.path.join(site_folders, folder), domain_id))
+
+    if workers > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            list(executor.map(_scan_domain_worker, domain_args))
+    else:
+        for folder_path, domain_id in domain_args:
+            scan_pdfs(folder_path, domain_id)
 
 
 
