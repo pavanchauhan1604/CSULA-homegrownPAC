@@ -74,10 +74,17 @@ def _run_spider(spider_name, scrapy_cmd):
         print(f"[START] {spider_name}")
         print(f"        log → {log_path}")
 
+    # 'scrapy crawl' reads scrapy.cfg and tries to import the settings module
+    # (sf_state_pdf_scan.settings). The subprocess needs SPIDER_DIR on
+    # PYTHONPATH so Python can find the sf_state_pdf_scan package.
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(SPIDER_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+
     with open(log_path, "w") as log_file:
         result = subprocess.run(
             [scrapy_cmd, "crawl", spider_name],
             cwd=str(SPIDER_DIR),
+            env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,
         )
