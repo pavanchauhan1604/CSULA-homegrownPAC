@@ -27,7 +27,7 @@ python src/data_management/data_import.py
 
 ### Step 4: Run Your First Crawl
 ```bash
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 python run_all_spiders.py
 ```
 This will crawl all configured sites and save PDF URLs.
@@ -115,7 +115,7 @@ The original code has hardcoded Windows paths. Update these in:
    temp_profile_path = "/Users/pavan/Work/CSULA-homegrownPAC/temp/temp_profile.json"
    ```
 
-3. **Spiders** (in `crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders/*.py`)
+3. **Spiders** (in `crawlers/csula_pdf_scan/csula_pdf_scan/spiders/*.py`)
    ```python
    output_folder = '/path/to/output/domain-name'
    ```

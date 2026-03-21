@@ -160,7 +160,7 @@ python config/generate_spiders.py
 
 #### **Step 2: Crawl Websites to Find PDFs**
 ```powershell
-cd crawlers\sf_state_pdf_scan; python run_all_spiders.py; cd ..\..
+cd crawlers\csula_pdf_scan; python run_all_spiders.py; cd ..\..
 ```
 - Crawls each domain (up to 3 levels deep)
 - **Time:** 5-15 minutes per domain
@@ -377,7 +377,7 @@ CSULA-homegrownPAC/
 │   ├── scans/{domain}/         # Excel reports and crawl results
 │   └── emails/                 # HTML email reports
 ├── crawlers/                    # Scrapy web crawlers
-│   └── sf_state_pdf_scan/
+│   └── csula_pdf_scan/
 ├── src/                         # Core functionality
 │   ├── core/                   # PDF analysis, database
 │   ├── data_management/        # Data import/export

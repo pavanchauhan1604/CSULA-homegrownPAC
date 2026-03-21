@@ -9,17 +9,17 @@ from pydispatch import dispatcher
 from scrapy import signals
 from datetime import datetime
 
-from ..box_handler import get_box_contents
+from csula_pdf_scan.csula_pdf_scan.box_handler import get_box_contents
 
 
-class JPaulLeonardLibrary2Spider(scrapy.Spider):
-    name = 'jpaul_leonard_library2_spider'
-    start_urls = ['https://m.library.sfsu.edu']
-    output_folder = r'C:\Users\913678186\Box\ATI\PDF Accessibility\SF State Website PDF Scans\m-library-sfsu-edu'
+class JPaulLeonardLibrarySpider(scrapy.Spider):
+    name = 'jpaul_leonard_library_spider'
+    start_urls = ['https://library.sfsu.edu']
+    output_folder = r'C:\Users\913678186\Box\ATI\PDF Accessibility\CSULA Website PDF Scans\library-sfsu-edu'
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        spider = super(JPaulLeonardLibrary2Spider, cls).from_crawler(crawler, *args, **kwargs)
+        spider = super(JPaulLeonardLibrarySpider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
         return spider
 
@@ -32,12 +32,12 @@ class JPaulLeonardLibrary2Spider(scrapy.Spider):
     def parse(self, response):
         """
         Extracts all <a href="..."> links from the page and decides:
-          - If the link is within m.library.sfsu.edu, follow it or store if it's a PDF.
+          - If the link is within library.sfsu.edu, follow it or store if it's a PDF.
           - If the link is a Box.com link, hand it off to parse_box_link.
         """
 
-        # Regex for m.library.sfsu.edu domain (handles both http and https)
-        access_url_pattern = re.compile(r'https?://m.library.sfsu.edu/.*', re.IGNORECASE)
+        # Regex for library.sfsu.edu domain (handles both http and https)
+        access_url_pattern = re.compile(r'https?://library.sfsu.edu/.*', re.IGNORECASE)
 
         # Regex for box.com links
         box_url_pattern = re.compile(r'https?://sfsu\.box\.com/s/.*', re.IGNORECASE)
@@ -51,7 +51,7 @@ class JPaulLeonardLibrary2Spider(scrapy.Spider):
         for link in extracted_links:
             absolute_url = response.urljoin(link)
 
-            # If the link is internal to m.library.sfsu.edu
+            # If the link is internal to library.sfsu.edu
             if access_url_pattern.match(absolute_url):
                 # Check if it’s a PDF
                 if pdf_pattern.match(absolute_url):

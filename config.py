@@ -90,7 +90,7 @@ DOCS_DIR = PROJECT_ROOT / "docs"
 
 # Crawler/Spider directory
 CRAWLERS_DIR = PROJECT_ROOT / "crawlers"
-SPIDER_DIR = CRAWLERS_DIR / "sf_state_pdf_scan"
+SPIDER_DIR = CRAWLERS_DIR / "csula_pdf_scan"
 
 # =============================================================================
 # DATABASE SETTINGS

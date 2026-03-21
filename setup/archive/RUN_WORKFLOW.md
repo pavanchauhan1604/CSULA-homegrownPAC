@@ -39,7 +39,7 @@ cd /Users/pavan/Work/CSULA-homegrownPAC
 
 **Option A: Generate for all domains in database**
 ```bash
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 python3 ../../config/sites.py
 ```
 
@@ -58,7 +58,7 @@ for d in domains:
 ```
 
 **Note:** The spider generator (`config/sites.py`) will create one spider per domain in:
-`crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders/`
+`crawlers/csula_pdf_scan/csula_pdf_scan/spiders/`
 
 ---
 
@@ -69,7 +69,7 @@ Now we'll run the spiders to crawl each website and find all PDF links.
 ### Step 2.1: Run All Spiders
 
 ```bash
-cd /Users/pavan/Work/CSULA-homegrownPAC/crawlers/sf_state_pdf_scan
+cd /Users/pavan/Work/CSULA-homegrownPAC/crawlers/csula_pdf_scan
 
 # Run all spiders
 python3 run_all_spiders.py
@@ -311,14 +311,14 @@ export PYTHONPATH="$PWD:$PYTHONPATH"
 echo ""
 echo "Phase 1: Generate Spiders"
 echo "=========================================="
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 python3 ../../config/sites.py
 cd ../..
 
 echo ""
 echo "Phase 2: Crawl Websites for PDFs"
 echo "=========================================="
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 python3 run_all_spiders.py
 cd ../..
 
@@ -372,7 +372,7 @@ print('See config/sites.py to generate spiders')
 "
 
 # 4. Run ONE spider manually
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 scrapy list  # Shows available spiders
 scrapy crawl <spider_name>  # Run specific spider
 

@@ -4,7 +4,7 @@ import sys
 import os
 
 # Add project root to path for imports
-# box_handler.py is at: CSULA-homegrownPAC/crawlers/sf_state_pdf_scan/sf_state_pdf_scan/box_handler.py
+# box_handler.py is at: CSULA-homegrownPAC/crawlers/csula_pdf_scan/csula_pdf_scan/box_handler.py
 # Project root is at: CSULA-homegrownPAC/
 # So we need to go up 3 directories
 project_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../'))
@@ -59,7 +59,7 @@ def get_box_contents(box_url):
 
 
 
-temp_pdf_path = "C:\\Users\\913678186\\IdeaProjects\\sf_state_pdf_website_scan\\temp\\temp.pdf"
+temp_pdf_path = "C:\\Users\\913678186\\IdeaProjects\\csula_pdf_website_scan\\temp\\temp.pdf"
 
 import re
 import requests

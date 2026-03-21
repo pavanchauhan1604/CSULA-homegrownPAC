@@ -1,4 +1,4 @@
-# Scrapy settings for sf_state_pdf_scan project
+# Scrapy settings for csula_pdf_scan project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -7,14 +7,14 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-# BOT_NAME = "sf_state_pdf_scan"
+# BOT_NAME = "csula_pdf_scan"
 
-SPIDER_MODULES = ["sf_state_pdf_scan.spiders"]
-NEWSPIDER_MODULE = "sf_state_pdf_scan.spiders"
+SPIDER_MODULES = ["csula_pdf_scan.spiders"]
+NEWSPIDER_MODULE = "csula_pdf_scan.spiders"
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = "sf_state_pdf_scan (+http://www.yourdomain.com)"
+#USER_AGENT = "csula_pdf_scan (+http://www.yourdomain.com)"
 
 # Obey robots.txt rules
 # ROBOTSTXT_OBEY = True
@@ -45,13 +45,13 @@ TELNETCONSOLE_ENABLED = False
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    "sf_state_pdf_scan.middlewares.SfStatePdfScanSpiderMiddleware": 543,
+#    "csula_pdf_scan.middlewares.CslaPdfScanSpiderMiddleware": 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    "sf_state_pdf_scan.middlewares.SfStatePdfScanDownloaderMiddleware": 543,
+#    "csula_pdf_scan.middlewares.CslaPdfScanDownloaderMiddleware": 543,
 #}
 
 # Enable or disable extensions
@@ -63,7 +63,7 @@ TELNETCONSOLE_ENABLED = False
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 #ITEM_PIPELINES = {
-#    "sf_state_pdf_scan.pipelines.SfStatePdfScanPipeline": 300,
+#    "csula_pdf_scan.pipelines.CslaPdfScanPipeline": 300,
 #}
 
 # Enable and configure the AutoThrottle extension (disabled by default)

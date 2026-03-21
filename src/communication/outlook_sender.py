@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Windows-only email sender using Outlook COM automation.
 
-This mirrors the legacy approach used in the SF State project:
+This mirrors the legacy approach used in the original project:
 - Drive the locally installed Outlook desktop client via COM.
 - Works with modern auth/MFA because Outlook is already signed in.
 

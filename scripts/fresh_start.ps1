@@ -48,8 +48,8 @@ Remove-Item -Force "nohup.out", "workflow_output.log" -ErrorAction SilentlyConti
 
 # Clean generated spiders (__pycache__ and *_spider.py files)
 Write-Host "Cleaning generated spider files..."
-Get-ChildItem "crawlers\sf_state_pdf_scan\sf_state_pdf_scan" -Recurse -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
-Get-ChildItem "crawlers\sf_state_pdf_scan\sf_state_pdf_scan\spiders" -Filter "*_spider.py" -ErrorAction SilentlyContinue | Remove-Item -Force
+Get-ChildItem "crawlers\csula_pdf_scan\csula_pdf_scan" -Recurse -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+Get-ChildItem "crawlers\csula_pdf_scan\csula_pdf_scan\spiders" -Filter "*_spider.py" -ErrorAction SilentlyContinue | Remove-Item -Force
 
 # Recreate necessary directories
 Write-Host "Recreating directory structure..."

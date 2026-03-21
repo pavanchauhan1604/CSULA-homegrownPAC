@@ -22,11 +22,11 @@ import config
 from src.core.conformance_checker import loop_through_files_in_folder
 from src.data_management.data_export import get_pdf_reports_by_site_name
 from src.data_management.data_import import get_site_id_by_domain_name, mark_pdf_as_removed
-from crawlers.sf_state_pdf_scan.sf_state_pdf_scan.box_handler import download_from_box, box_share_pattern_match
+from crawlers.csula_pdf_scan.csula_pdf_scan.box_handler import download_from_box, box_share_pattern_match
 
 
-pdf_sites_folder = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\SF State Website PDF Scans"
-scans_output = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\SF State Website PDF Scans\\{}"
+pdf_sites_folder = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\CSULA Website PDF Scans"
+scans_output = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\CSULA Website PDF Scans\\{}"
 
 
 def delete_scans_files(root_folder):
@@ -122,7 +122,7 @@ def delete_duplicate_entries():
 
 
 def download_all_dprc_will_remediate_pdfs_by_site(site_name):
-    box_folder = rf'C:\Users\913678186\Box\ATI\PDF Accessibility\SF State Website PDF Scans\{site_name}'
+    box_folder = rf'C:\Users\913678186\Box\ATI\PDF Accessibility\CSULA Website PDF Scans\{site_name}'
     box_temp_folder = os.path.join(box_folder, 'temp')
     # Reports are now generated with timestamped names; pick the most recent.
     xlsx_candidates = [
@@ -239,7 +239,7 @@ def get_all_folders_by_date_modified(folder_path, date_modified):
 
 
 # print('\n'.join(get_all_folders_by_date_modified(
-#     r"C:\Users\913678186\Box\ATI\PDF Accessibility\SF State Website PDF Scans",
+#     r"C:\Users\913678186\Box\ATI\PDF Accessibility\CSULA Website PDF Scans",
 #     "06/17/2025")))
 
 # download_all_dprc_will_remediate_pdfs_by_site('cob-sfsu-edu')

@@ -10,7 +10,7 @@ if project_root not in sys.path:
 
 import config
 from src.data_management.data_export import get_pdfs_by_site_name
-from crawlers.sf_state_pdf_scan.sf_state_pdf_scan.box_handler import box_share_pattern_match, download_from_box
+from crawlers.csula_pdf_scan.csula_pdf_scan.box_handler import box_share_pattern_match, download_from_box
 
 def check_box_pdf_status(pdf_uri):
     """

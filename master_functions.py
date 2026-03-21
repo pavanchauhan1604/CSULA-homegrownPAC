@@ -84,10 +84,10 @@ def count_high_priority_pdfs():
 #
 #     import shutil
 #     from datetime import datetime
-#     db_backup_folder = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\SF State Website PDF Scans\\database-backups"
+#     db_backup_folder = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\CSULA Website PDF Scans\\database-backups"
 #     if not os.path.exists(db_backup_folder):
 #         os.makedirs(db_backup_folder)
-#     db_file = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\SF State Website PDF Scans\\drupal_pdfs.db"
+#     db_file = "C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\CSULA Website PDF Scans\\drupal_pdfs.db"
 #     if os.path.exists(db_file):
 #
 
@@ -157,7 +157,7 @@ def create_all_pdf_reports():
 
 
 def single_site_full_refresh():
-    single_site_pdf_scan(r"C:\Users\913678186\Box\ATI\PDF Accessibility\SF State Website PDF Scans\creativewriting-sfsu-edu")
+    single_site_pdf_scan(r"C:\Users\913678186\Box\ATI\PDF Accessibility\CSULA Website PDF Scans\creativewriting-sfsu-edu")
     refresh_status(site="creativewriting.sfsu.edu")
     mark_pdfs_as_removed(pdf_sites_folder)
     refresh_existing_pdf_reports(single_domain="creativewriting.sfsu.edu")

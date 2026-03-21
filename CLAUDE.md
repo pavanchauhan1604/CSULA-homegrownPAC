@@ -58,7 +58,7 @@ data/sites.csv  →  Scrapy spiders crawl domains
 | `scripts/generate_master_report.py` | Master Excel (Data/Dashboard/Run Index sheets) |
 | `scripts/generate_master_report_html.py` | Master HTML dashboard with Chart.js |
 | `scripts/historical_analysis.py` | Per-domain HTML trend dashboards |
-| `crawlers/sf_state_pdf_scan/run_all_spiders.py` | Spider orchestration (restart-safe) |
+| `crawlers/csula_pdf_scan/run_all_spiders.py` | Spider orchestration (restart-safe) |
 
 ---
 

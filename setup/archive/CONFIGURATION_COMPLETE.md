@@ -167,7 +167,7 @@ To make the entire system use this configuration, we need to update these files:
 2. `src/core/conformance_checker.py` - Update temp paths and folder references
 3. `src/utilities/tools.py` - Update path references
 4. `config/sites.py` - Update spider generation to use config
-5. `crawlers/sf_state_pdf_scan/sf_state_pdf_scan/box_handler.py` - Update temp path
+5. `crawlers/csula_pdf_scan/csula_pdf_scan/box_handler.py` - Update temp path
 
 ### Medium Priority (Data Management)
 6. `src/data_management/data_import.py` - Update to use config database path

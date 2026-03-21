@@ -9,17 +9,17 @@ from pydispatch import dispatcher
 from scrapy import signals
 from datetime import datetime
 
-from sf_state_pdf_scan.sf_state_pdf_scan.box_handler import get_box_contents
+from ..box_handler import get_box_contents
 
 
-class JPaulLeonardLibrarySpider(scrapy.Spider):
-    name = 'jpaul_leonard_library_spider'
+class JPaulLeonardLibrary1Spider(scrapy.Spider):
+    name = 'jpaul_leonard_library1_spider'
     start_urls = ['https://library.sfsu.edu']
-    output_folder = r'C:\Users\913678186\Box\ATI\PDF Accessibility\SF State Website PDF Scans\library-sfsu-edu'
+    output_folder = r'C:\Users\913678186\Box\ATI\PDF Accessibility\CSULA Website PDF Scans\library-sfsu-edu'
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        spider = super(JPaulLeonardLibrarySpider, cls).from_crawler(crawler, *args, **kwargs)
+        spider = super(JPaulLeonardLibrary1Spider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
         return spider
 

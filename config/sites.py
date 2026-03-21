@@ -290,7 +290,6 @@ from src.data_management.data_import import get_all_sites_domain_names
 #     "imes.sfsu.edu",
 #     "marineops.sfsu.edu",
 #     "safety.sfsu.edu",
-#     "sfstatefacilities.sfsu.edu",
 #     "foundation.sfsu.edu",
 #     "sfsufdn.sfsu.edu",
 #     "tax.sfsu.edu",
@@ -426,7 +425,7 @@ from ..box_handler import get_box_contents
 class {class_name}(scrapy.Spider):
     name = '{name}'
     start_urls = ['https://{site_url}']
-    output_folder = r'C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\SF State Website PDF Scans\\{save_folder}'
+    output_folder = r'C:\\Users\\913678186\\Box\\ATI\\PDF Accessibility\\CSULA Website PDF Scans\\{save_folder}'
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
@@ -517,7 +516,7 @@ class {class_name}(scrapy.Spider):
         self.logger.info("PDF LINKS saved to %s", output_file_path)
 """
 
-output_dir = "sf_state_pdf_scan/sf_state_pdf_scan/spiders"
+output_dir = "csula_pdf_scan/csula_pdf_scan/spiders"
 os.makedirs(output_dir, exist_ok=True)
 
 all_sites = get_all_sites_domain_names()

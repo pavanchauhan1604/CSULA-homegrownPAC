@@ -21,7 +21,7 @@ from src.data_management.data_export import get_all_sites, get_pdf_reports_by_si
 from src.data_management.data_import import add_pdf_file_to_database, get_site_id_by_domain_name, check_if_pdf_report_exists, \
     add_pdf_report_failure
 from src.core.pdf_priority import violation_counter, pdf_check, pdf_status
-from crawlers.sf_state_pdf_scan.sf_state_pdf_scan.box_handler import box_share_pattern_match, download_from_box
+from crawlers.csula_pdf_scan.csula_pdf_scan.box_handler import box_share_pattern_match, download_from_box
 import config
 
 temp_pdf_path = str(config.TEMP_PDF_PATH)

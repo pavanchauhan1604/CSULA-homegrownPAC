@@ -49,7 +49,7 @@ def generate_email(html_content, reciever):
     print("Email properties set.")
 
     # Save the email as an MSG file
-    save_path = r"C:\Users\913678186\IdeaProjects\sf_state_pdf_website_scan\emails\email.msg"
+    save_path = r"C:\Users\913678186\IdeaProjects\csula_pdf_website_scan\emails\email.msg"
     # mail.SaveAs(save_path, 3)  # 3: olMSG
     print("Sending")
     mail_item.Send()

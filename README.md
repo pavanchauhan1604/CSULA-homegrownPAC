@@ -36,9 +36,9 @@ CSULA-homegrownPAC/
 │   ├── send_emails.py           # Send pre-generated drafts via Outlook COM (Windows)
 │   └── historical_analysis.py  # Per-domain HTML trend dashboards
 ├── crawlers/                    # Web scraping
-│   └── sf_state_pdf_scan/       # Scrapy project
+│   └── csula_pdf_scan/       # Scrapy project
 │       ├── run_all_spiders.py   # Spider orchestrator
-│       └── sf_state_pdf_scan/   # Spider modules
+│       └── csula_pdf_scan/   # Spider modules
 ├── sql/                         # SQL query library
 │   ├── get_all_sites.sql
 │   ├── get_pdf_reports_by_site_name.sql

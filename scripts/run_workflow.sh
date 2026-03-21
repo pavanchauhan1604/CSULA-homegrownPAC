@@ -84,7 +84,7 @@ echo "STEP 2: Crawl Websites to Find PDFs"
 echo "============================================================"
 echo "This will take 5-15 minutes..."
 echo ""
-pushd crawlers/sf_state_pdf_scan > /dev/null
+pushd crawlers/csula_pdf_scan > /dev/null
 if [[ -n "$DOMAIN_KEY" ]]; then
     "../../$PYTHON" run_all_spiders.py --domain "$DOMAIN_KEY"
 else

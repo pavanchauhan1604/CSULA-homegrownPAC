@@ -39,14 +39,14 @@ verapdf --version
 This creates web crawlers for each of your test domains:
 
 ```bash
-cd /Users/pavan/Work/CSULA-homegrownPAC/crawlers/sf_state_pdf_scan
+cd /Users/pavan/Work/CSULA-homegrownPAC/crawlers/csula_pdf_scan
 python3 ../../config/sites.py
 ```
 
 **What this does:**
 - Reads domains from database
 - Creates one spider per domain
-- Spiders are saved to: `sf_state_pdf_scan/spiders/`
+- Spiders are saved to: `csula_pdf_scan/spiders/`
 
 **Expected output:**
 ```
@@ -62,7 +62,7 @@ Generated spider for academicsenate.calstatela.edu: academicsenate_spider.py
 Now crawl the websites to find all PDF files:
 
 ```bash
-# Still in crawlers/sf_state_pdf_scan directory
+# Still in crawlers/csula_pdf_scan directory
 python3 run_all_spiders.py
 ```
 
@@ -252,7 +252,7 @@ cd /Users/pavan/Work/CSULA-homegrownPAC
 # Complete workflow
 (
   echo "🔄 Step 1: Generate spiders..."
-  cd crawlers/sf_state_pdf_scan && python3 ../../config/sites.py
+  cd crawlers/csula_pdf_scan && python3 ../../config/sites.py
   
   echo "🔄 Step 2: Crawl websites..."
   python3 run_all_spiders.py
@@ -388,7 +388,7 @@ brew install verapdf
 python3 test_setup.py
 
 # 3. Start workflow
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 python3 ../../config/sites.py
 python3 run_all_spiders.py
 cd ../..

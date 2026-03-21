@@ -52,11 +52,11 @@ echo ""
 echo "============================================================"
 echo "STEP 2: Crawl Websites to Find PDFs"
 echo "============================================================"
-echo "Command: cd crawlers/sf_state_pdf_scan && $PYTHON_CMD run_all_spiders.py"
+echo "Command: cd crawlers/csula_pdf_scan && $PYTHON_CMD run_all_spiders.py"
 echo ""
 echo "⏱️  This will take 5-15 minutes. Watch for crawling progress..."
 echo ""
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 ../../"$PYTHON_CMD" run_all_spiders.py
 cd ../..
 echo ""

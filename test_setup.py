@@ -120,7 +120,7 @@ def test_spider_generation():
     print("="*70)
     
     try:
-        spider_dir = project_root / "crawlers" / "sf_state_pdf_scan" / "sf_state_pdf_scan" / "spiders"
+        spider_dir = project_root / "crawlers" / "csula_pdf_scan" / "csula_pdf_scan" / "spiders"
         
         if not spider_dir.exists():
             print(f"❌ Spider directory not found: {spider_dir}")
@@ -203,7 +203,7 @@ def show_next_steps():
 To run the complete workflow:
 
 1. Generate spiders for your domains:
-   cd crawlers/sf_state_pdf_scan
+   cd crawlers/csula_pdf_scan
    python3 ../../config/sites.py
 
 2. Run the spiders to find PDFs:

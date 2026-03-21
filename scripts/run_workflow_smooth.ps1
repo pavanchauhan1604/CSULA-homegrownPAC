@@ -57,7 +57,7 @@ Write-Host "STEP 2: Crawl Websites to Find PDFs"
 Write-Host "============================================================"
 Write-Host "This will take 5-15 minutes..."
 Write-Host ""
-Push-Location crawlers\sf_state_pdf_scan
+Push-Location crawlers\csula_pdf_scan
 try {
     if ($Domain) {
         & ..\..\$PYTHON run_all_spiders.py --domain $Domain

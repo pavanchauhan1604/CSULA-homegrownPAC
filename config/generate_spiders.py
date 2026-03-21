@@ -178,7 +178,7 @@ def generate_spiders(single_domain=None):
                        generation to a single spider. When None all domains are processed.
     """
 
-    output_dir = os.path.join(project_root, "crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders")
+    output_dir = os.path.join(project_root, "crawlers/csula_pdf_scan/csula_pdf_scan/spiders")
     os.makedirs(output_dir, exist_ok=True)
 
     try:

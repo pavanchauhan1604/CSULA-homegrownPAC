@@ -88,7 +88,7 @@ def run_sql_query(sql_file_path, template_html):
             mail_item = outlook.CreateItem(0)  # 0 indicates a MailItem.
             mail_item.To = recipient_email
             mail_item.SentOnBehalfOfName = "access@sfsu.edu"
-            mail_item.Subject = "SF State ATI | Drupal PDF Accessibility Remediation"
+            mail_item.Subject = "Cal State LA ATI | Drupal PDF Accessibility Remediation"
             mail_item.HTMLBody = html_content
 
             # Create a safe filename based on first name and recipient email.
@@ -194,7 +194,7 @@ def generate_followup_emails(excel_sheet, sql_file_path, template_html):
             mail_item = outlook.CreateItem(0)
             mail_item.To = email
             mail_item.SentOnBehalfOfName = "access@sfsu.edu"
-            mail_item.Subject = "SF State ATI | Follow-Up: Drupal PDF Accessibility"
+            mail_item.Subject = "Cal State LA ATI | Follow-Up: Drupal PDF Accessibility"
             mail_item.HTMLBody = html_content
 
             filename = sanitize_filename(f"{name}_{email}_followup.msg")
@@ -209,7 +209,7 @@ def generate_followup_emails(excel_sheet, sql_file_path, template_html):
 
 if __name__ == "__main__":
     # Path to the SQL file with your query.
-    sql_file_path = r"C:\Users\913678186\IdeaProjects\sf_state_pdf_website_scan\sql\get_admin_contacts.sql"
+    sql_file_path = r"C:\Users\913678186\IdeaProjects\csula_pdf_website_scan\sql\get_admin_contacts.sql"
 
     # Path to the HTML template file.
     template_html_path = r"C:\Users\913678186\Box\ATI\PDF Accessibility\Reports\build_files\templates\mpp_followup_contact_email.html"

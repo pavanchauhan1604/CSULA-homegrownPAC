@@ -27,7 +27,7 @@ from scrapy import spiderloader
 MAX_CONCURRENT_SPIDERS = 3
 
 COMPLETED_FILE = config.TEMP_DIR / "completed_spiders.txt"
-SPIDER_DIR = Path(__file__).resolve().parent   # crawlers/sf_state_pdf_scan/
+SPIDER_DIR = Path(__file__).resolve().parent   # crawlers/csula_pdf_scan/
 
 # Thread-safe lock for writing to COMPLETED_FILE and printing progress.
 _lock = threading.Lock()
@@ -75,8 +75,8 @@ def _run_spider(spider_name, scrapy_cmd):
         print(f"        log → {log_path}")
 
     # 'scrapy crawl' reads scrapy.cfg and tries to import the settings module
-    # (sf_state_pdf_scan.settings). The subprocess needs SPIDER_DIR on
-    # PYTHONPATH so Python can find the sf_state_pdf_scan package.
+    # (csula_pdf_scan.settings). The subprocess needs SPIDER_DIR on
+    # PYTHONPATH so Python can find the csula_pdf_scan package.
     env = os.environ.copy()
     env["PYTHONPATH"] = str(SPIDER_DIR) + os.pathsep + env.get("PYTHONPATH", "")
 

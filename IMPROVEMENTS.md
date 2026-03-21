@@ -60,7 +60,7 @@ sf_state_pdf_check-master/
 ├── pdf_priority.py
 ├── scan_refresh.py
 ├── tools.py
-├── sf_state_pdf_scan/  (crawler)
+├── csula_pdf_scan/  (crawler)
 ├── sql/  (queries)
 ├── employees.csv
 ├── sites.csv

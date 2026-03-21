@@ -8,7 +8,6 @@ CSULA-homegrownPAC/
 ├── 📄 master_functions.py         # MAIN ORCHESTRATOR - Start here!
 ├── 📄 README.md                   # Project documentation
 ├── 📄 .gitignore                  # Git ignore rules
-├── 📄 sf_state_pdf_website_scan.iml
 │
 ├── 📁 config/                     # Configuration & Settings
 │   ├── priority_profiles.py      # Priority detection profiles
@@ -53,11 +52,11 @@ CSULA-homegrownPAC/
 │
 ├── 📁 crawlers/                   # Web scraping
 │   ├── README.md
-│   └── 📁 sf_state_pdf_scan/     # Scrapy project
+│   └── 📁 csula_pdf_scan/     # Scrapy project
 │       ├── run_all_spiders.py    # Spider orchestrator
 │       ├── run_spider_by_name.py
 │       ├── scrapy.cfg
-│       └── sf_state_pdf_scan/
+│       └── csula_pdf_scan/
 │           ├── __init__.py
 │           ├── box_handler.py    # Box.com integration
 │           ├── items.py
@@ -146,13 +145,13 @@ CSULA-homegrownPAC/
 | Send emails | `src/communication/pdf_email.py` |
 | Upload reports to Teams | `scripts/teams_upload.py` |
 | Historical trend dashboards | `scripts/historical_analysis.py` |
-| Web scraping | `crawlers/sf_state_pdf_scan/` |
+| Web scraping | `crawlers/csula_pdf_scan/` |
 | SQL queries | `sql/*.sql` |
 | View outputs | `output/reports/` |
 | Read docs | `docs/` |
 
 ## Migration Notes
 
-All files have been copied from `sf_state_pdf_check-master/` to the new organized structure. No functionality has changed - only the organization.
+All files have been copied from `csula_pdf_check-master/` to the new organized structure. No functionality has changed - only the organization.
 
 **Note**: Update any hardcoded paths in the code to reflect the new structure if needed.

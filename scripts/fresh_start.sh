@@ -67,10 +67,10 @@ rm -f nohup.out workflow_output.log
 
 # Clean crawl data
 echo "🗑️  Cleaning crawl data..."
-rm -rf crawlers/sf_state_pdf_scan/sf_state_pdf_scan/__pycache__
-rm -rf crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders/__pycache__
+rm -rf crawlers/csula_pdf_scan/csula_pdf_scan/__pycache__
+rm -rf crawlers/csula_pdf_scan/csula_pdf_scan/spiders/__pycache__
 # Remove generated spider files (keep only __init__.py)
-find crawlers/sf_state_pdf_scan/sf_state_pdf_scan/spiders -name '*_spider.py' -delete
+find crawlers/csula_pdf_scan/csula_pdf_scan/spiders -name '*_spider.py' -delete
 
 # Recreate necessary directories
 echo "📁 Recreating directory structure..."

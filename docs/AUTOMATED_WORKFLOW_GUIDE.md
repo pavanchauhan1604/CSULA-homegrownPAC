@@ -558,7 +558,7 @@ curl -I https://www.calstatela.edu/accessibility
 cat output/scans/www-calstatela-edu_accessibility/scanned_pdfs.txt
 
 # Run crawler manually with verbose output
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 scrapy crawl calstatela_edu_accessibility_spider -L DEBUG
 ```
 

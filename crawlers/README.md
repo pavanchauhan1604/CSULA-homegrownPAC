@@ -5,11 +5,11 @@ Scrapy-based web crawlers for discovering PDFs on university websites.
 ## Structure
 
 ```
-sf_state_pdf_scan/
+csula_pdf_scan/
 ├── run_all_spiders.py           # Orchestrates running multiple spiders
 ├── run_spider_by_name.py        # Run a single spider
 ├── scrapy.cfg                   # Scrapy configuration
-└── sf_state_pdf_scan/
+└── csula_pdf_scan/
     ├── settings.py              # Spider settings (delays, concurrency)
     ├── box_handler.py           # Box.com link processor
     ├── items.py                 # Data models
@@ -29,19 +29,19 @@ sf_state_pdf_scan/
 
 ### Run all spiders sequentially:
 ```bash
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 python run_all_spiders.py
 ```
 
 ### Run a specific spider:
 ```bash
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 python run_spider_by_name.py spider_name
 ```
 
 ### Run with Scrapy CLI:
 ```bash
-cd crawlers/sf_state_pdf_scan
+cd crawlers/csula_pdf_scan
 scrapy crawl faculty_spider
 ```
 

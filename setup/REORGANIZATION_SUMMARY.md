@@ -96,7 +96,7 @@ CSULA-homegrownPAC/
 │   └── utilities/
 │
 ├── crawlers/                           # Web crawlers (UNCHANGED)
-│   └── sf_state_pdf_scan/
+│   └── csula_pdf_scan/
 │
 ├── sql/                                # SQL queries (UNCHANGED)
 ├── temp/                               # Temporary files (UNCHANGED)

@@ -5,12 +5,12 @@
 │   └── sites.py
 ├── crawlers
 │   ├── README.md
-│   └── sf_state_pdf_scan
+│   └── csula_pdf_scan
 │       ├── __init__.py
 │       ├── run_all_spiders.py
 │       ├── run_spider_by_name.py
 │       ├── scrapy.cfg
-│       └── sf_state_pdf_scan
+│       └── csula_pdf_scan
 ├── data
 │   ├── employees.csv
 │   ├── employees1.csv
@@ -34,7 +34,6 @@
 │       └── monthly_report.html
 ├── QUICKSTART.md
 ├── README.md
-├── sf_state_pdf_website_scan.iml
 ├── sql
 │   ├── all_pdf_stats.sql
 │   ├── delete_duplicates.sql
