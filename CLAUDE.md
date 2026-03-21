@@ -1,5 +1,9 @@
 # CLAUDE.md — CSULA HomegrownPAC
 
+## Instructions for Claude
+
+- **Never add `Co-Authored-By:` lines to git commits.** The user does not want any Claude attribution in the repository history. Commit with the user's name only, always.
+
 ## Project Purpose
 Automated PDF accessibility compliance system for Cal State LA (CSULA).
 Crawls university websites, tests PDFs against PDF/UA 1.0 via VeraPDF, generates
