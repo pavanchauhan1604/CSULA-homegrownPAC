@@ -50,6 +50,5 @@ Thumbs.db
 # Logs
 *.log
 
-# AI assistant context files (local only)
-CLAUDE.md
+# Claude Code session state (local only)
 .claude/
