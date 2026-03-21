@@ -1,16 +1,26 @@
 ﻿# =============================================================================
 # CSULA PDF Accessibility Checker - Complete Workflow (PowerShell)
-# Equivalent of scripts/run_workflow_smooth.sh
+# Equivalent of scripts/run_workflow.sh (Mac)
 # =============================================================================
 # Usage (from project root):
 #   .\scripts\run_workflow_smooth.ps1
+#   .\scripts\run_workflow_smooth.ps1 -Domain calstatela.edu_ecst
+#
+# -Domain limits Steps 1 (spider generation) and 2 (crawl) to a single domain.
 # =============================================================================
+
+param(
+    [string]$Domain = ""
+)
 
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
 $PYTHON = if (Test-Path ".venv\Scripts\python.exe") { ".venv\Scripts\python.exe" } else { "python" }
 Write-Host "Using Python: $PYTHON"
+if ($Domain) {
+    Write-Host "Domain filter: $Domain"
+}
 Write-Host ""
 
 # ---------------------------------------------------------------------------
@@ -31,7 +41,11 @@ Write-Host ""
 Write-Host "============================================================"
 Write-Host "STEP 1: Generate Spiders for Domains"
 Write-Host "============================================================"
-& $PYTHON config\generate_spiders.py
+if ($Domain) {
+    & $PYTHON config\generate_spiders.py --domain $Domain
+} else {
+    & $PYTHON config\generate_spiders.py
+}
 Write-Host "Step 1 complete."
 Write-Host ""
 
@@ -45,7 +59,11 @@ Write-Host "This will take 5-15 minutes..."
 Write-Host ""
 Push-Location crawlers\sf_state_pdf_scan
 try {
-    & ..\..\$PYTHON run_all_spiders.py
+    if ($Domain) {
+        & ..\..\$PYTHON run_all_spiders.py --domain $Domain
+    } else {
+        & ..\..\$PYTHON run_all_spiders.py
+    }
 } finally {
     Pop-Location
 }
@@ -147,3 +165,11 @@ Get-ChildItem output\reports -ErrorAction SilentlyContinue | Where-Object { -not
 Get-ChildItem output\emails  -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer -and $_.Extension -eq '.html' } | ForEach-Object { Write-Host "  $($_.FullName)" }
 Write-Host ""
 Write-Host "Workflow complete!"
+Write-Host ""
+Write-Host "Next steps (run separately after reviewing Excel files):"
+Write-Host "  python scripts\sharepoint_sync.py              # sync to OneDrive + email drafts"
+Write-Host "  python scripts\historical_analysis.py          # per-domain trend dashboards"
+Write-Host "  python scripts\generate_master_report.py       # master Excel"
+Write-Host "  python scripts\generate_master_report_html.py  # master HTML dashboard"
+Write-Host "  python scripts\send_emails.py                  # send emails via Outlook (prompts)"
+Write-Host "  python scripts\send_emails.py --force          # send without confirmation"
