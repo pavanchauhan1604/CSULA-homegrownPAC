@@ -108,13 +108,15 @@ def create_all_pdf_reports():
         c. Generates an accessibility report using the `create_verapdf_report` function.
         d. Adds the report to the database by calling the `add_pdf_file_to_database` function if successful, or logs a failure by calling the `add_pdf_report_failure` function if not.
 
-    On Mac (config.MACHINE == "mac") domain scanning runs in parallel using
-    ProcessPoolExecutor with up to min(num_domains, cpu_count * 2) workers.
-    Each worker uses a process-specific temp file path so concurrent scans
-    never collide on disk. SQLite WAL mode allows safe concurrent writers.
+    On Mac (config.MACHINE == "mac") scanning uses per-PDF parallelism via
+    ProcessPoolExecutor with cpu_count * 2 workers. Each worker handles one
+    PDF (download + VeraPDF + DB write), using a process-specific temp file
+    path so concurrent workers never collide on disk. Workers pull from a
+    flat queue of all PDFs across all domains, so no single large domain
+    can bottleneck the run. SQLite WAL mode + timeout=30 handles concurrent
+    write contention.
 
-    On Windows the existing sequential loop is preserved (ProcessPoolExecutor
-    spawn overhead and .bat VeraPDF invocation make parallelism slower there).
+    On Windows workers=1 is used — sequential, one PDF at a time.
 
     Parameters:
     None
