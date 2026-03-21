@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import datetime
 
 from src.core.conformance_checker import full_pdf_scan, refresh_existing_pdf_reports, single_site_pdf_scan
@@ -140,8 +141,29 @@ def create_all_pdf_reports():
     ##
     ## Make sure to back up the database before running this function
     ##
+    scan_start = datetime.now()
+    print(f"Scan started: {scan_start.strftime('%Y-%m-%d %H:%M:%S')}")
+
     # Import pdfs and test for accessibility
     full_pdf_scan(pdf_sites_folder, workers=workers)
+
+    scan_end = datetime.now()
+    duration = scan_end - scan_start
+    total_seconds = int(duration.total_seconds())
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    duration_human = f"{hours}h {minutes}m {seconds}s"
+
+    timing = {
+        "scan_start": scan_start.strftime("%Y-%m-%d %H:%M:%S"),
+        "scan_end":   scan_end.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration_seconds": total_seconds,
+        "duration_human":   duration_human,
+    }
+    timing_path = config.TEMP_DIR / "scan_timing.json"
+    with open(timing_path, "w") as f:
+        json.dump(timing, f, indent=2)
+    print(f"Scan completed: {scan_end.strftime('%Y-%m-%d %H:%M:%S')}  |  Duration: {duration_human}")
     # remove 404s and set as 404
     refresh_status()
     # compare the pdfs in the folder to the database and mark as removed if not in the folder

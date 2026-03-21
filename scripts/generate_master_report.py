@@ -115,6 +115,19 @@ def _refresh_run_index(run_index_ws, data_ws) -> list[str]:
     return ordered
 
 
+def _load_scan_timing() -> dict | None:
+    """Read temp/scan_timing.json written by master_functions.create_all_pdf_reports()."""
+    timing_path = config.TEMP_DIR / "scan_timing.json"
+    if not timing_path.exists():
+        return None
+    try:
+        import json
+        with open(timing_path) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
 def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_rows: list[tuple[str, str, int, int]]):
     ws = wb[SHEET_DASHBOARD] if SHEET_DASHBOARD in wb.sheetnames else wb.create_sheet(SHEET_DASHBOARD)
 
@@ -145,12 +158,31 @@ def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_row
     ws["B6"] = sum(r[3] for r in current_rows)
     ws["B6"].alignment = Alignment(horizontal="center")
 
-    ws["A8"] = "Tip: For older runs, go to the Data sheet and use Excel's column filter on 'Scan Date'."
-    ws["A8"].font = Font(italic=True, color="666666")
+    # Scan timing — written by master_functions.create_all_pdf_reports()
+    timing = _load_scan_timing()
+    if timing:
+        ws["A7"] = "Scan Started"
+        ws["A7"].font = Font(bold=True)
+        ws["B7"] = timing.get("scan_start", "")
+        ws["A8"] = "Scan Completed"
+        ws["A8"].font = Font(bold=True)
+        ws["B8"] = timing.get("scan_end", "")
+        ws["A9"] = "Scan Duration"
+        ws["A9"].font = Font(bold=True)
+        ws["B9"] = timing.get("duration_human", "")
+        ws["B9"].font = Font(bold=True, color="003262")
+        tip_row = 11
+    else:
+        tip_row = 8
 
-    _style_header_row(ws, ["Domain", "Total Unique PDFs", "High Priority PDFs"], row=10)
+    ws[f"A{tip_row}"] = "Tip: For older runs, go to the Data sheet and use Excel's column filter on 'Scan Date'."
+    ws[f"A{tip_row}"].font = Font(italic=True, color="666666")
 
-    for i, (_, domain, total, high) in enumerate(current_rows, start=11):
+    table_header_row = tip_row + 2
+    data_start_row = table_header_row + 1
+    _style_header_row(ws, ["Domain", "Total Unique PDFs", "High Priority PDFs"], row=table_header_row)
+
+    for i, (_, domain, total, high) in enumerate(current_rows, start=data_start_row):
         ws.cell(row=i, column=1, value=domain)
         ws.cell(row=i, column=2, value=total).alignment = Alignment(horizontal="center")
         ws.cell(row=i, column=3, value=high).alignment = Alignment(horizontal="center")
@@ -158,7 +190,7 @@ def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_row
     ws.column_dimensions["A"].width = 50
     ws.column_dimensions["B"].width = 22
     ws.column_dimensions["C"].width = 22
-    ws.freeze_panes = "A11"
+    ws.freeze_panes = f"A{data_start_row}"
 
 
 
