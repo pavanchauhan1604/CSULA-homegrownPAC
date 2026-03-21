@@ -46,6 +46,14 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "--- Step 2: Java runtime (required by VeraPDF) ---"
 
+# On Apple Silicon, Homebrew lives at /opt/homebrew and is not on PATH in
+# non-interactive scripts. Load its environment explicitly before any brew call.
+if [[ -x "/opt/homebrew/bin/brew" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ -x "/usr/local/bin/brew" ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+
 if command -v java &>/dev/null; then
     JAVA_VERSION=$(java -version 2>&1 | head -1)
     echo "[OK] Java found: $JAVA_VERSION"
@@ -53,33 +61,38 @@ else
     echo "[!] Java not found. Attempting to install Java 21 via Homebrew..."
     echo ""
     if command -v brew &>/dev/null; then
+        # set -e would kill the script if brew returns non-zero (e.g. already
+        # installed, checksum warning, etc.) — disable it for this block only.
+        set +e
         brew install --cask temurin@21
-        # Homebrew casks don't always update $PATH in the current shell session.
-        # Source the standard profile locations so java is visible immediately.
-        for profile in /etc/profile ~/.zprofile ~/.zshrc ~/.bash_profile ~/.bashrc; do
-            [[ -f "$profile" ]] && source "$profile" 2>/dev/null || true
-        done
-        if command -v java &>/dev/null; then
-            JAVA_VERSION=$(java -version 2>&1 | head -1)
-            echo "[OK] Java installed: $JAVA_VERSION"
-        else
-            echo "[OK] Java installed via Homebrew."
-            echo "     Open a new terminal (or run 'source ~/.zshrc') for java to"
-            echo "     appear on PATH, then re-run this script."
+        BREW_EXIT=$?
+        set -e
+
+        if [[ $BREW_EXIT -ne 0 ]]; then
+            echo "[!] 'brew install --cask temurin@21' exited with code $BREW_EXIT."
+            echo "    Try running it manually in a new terminal to see the full output."
             ISSUES=$((ISSUES + 1))
+        else
+            # Temurin installs to /Library/Java/JavaVirtualMachines/ — the JVM
+            # wrapper at /usr/bin/java picks it up automatically after install.
+            if command -v java &>/dev/null; then
+                echo "[OK] Java installed: $(java -version 2>&1 | head -1)"
+            else
+                echo "[OK] Java installed. Open a new terminal then re-run this script"
+                echo "     so /usr/bin/java is visible on PATH."
+                ISSUES=$((ISSUES + 1))
+            fi
         fi
     else
         echo "[!] Homebrew not found — cannot auto-install Java."
         echo ""
-        echo "    Option A — Install Homebrew first (recommended), then re-run:"
+        echo "    Option A — Install Homebrew first, then re-run this script:"
         echo "      /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-        echo "      brew install --cask temurin@21"
         echo ""
         echo "    Option B — Download the .pkg installer directly:"
         echo "      https://adoptium.net/"
         echo "      Choose: Eclipse Temurin 21 (LTS) → macOS → .pkg"
         echo ""
-        echo "    After installing, re-run this script to confirm."
         ISSUES=$((ISSUES + 1))
     fi
 fi
