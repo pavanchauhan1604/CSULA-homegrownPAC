@@ -12,7 +12,7 @@ import config
 
 def add_employees_from_csv_file(file_path):
     # Define the connection and cursor
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -44,7 +44,7 @@ def update_managers_boolean_in_site_user_table(csv_file_path):
         managers = [row[0] for row in csv_reader]
 
     # Define the connection and cursor
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -63,7 +63,7 @@ def update_managers_boolean_in_site_user_table(csv_file_path):
 
 
 def add_sites_from_site_csv_file(file_path):
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
     # open csv file
@@ -91,7 +91,7 @@ def add_sites_from_site_csv_file(file_path):
 
 
 def add_employee_and_site_assignments_from_csv_file(file_path):
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -130,7 +130,7 @@ def add_employee_and_site_assignments_from_csv_file(file_path):
 
 
 def add_admin_contacts(file_path):
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -188,7 +188,7 @@ def add_admin_contacts(file_path):
 
 def check_if_pdf_file_exists(pdf_uri, parent_uri, drupal_site_id, pdf_hash):
 
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -201,7 +201,7 @@ def check_if_pdf_file_exists(pdf_uri, parent_uri, drupal_site_id, pdf_hash):
 
 
 def get_site_id_from_domain_name(domain_name):
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
     site_id = cursor.execute("SELECT id FROM drupal_site WHERE domain_name = ?", (domain_name,)).fetchone()
@@ -213,7 +213,7 @@ import sqlite3
 
 def add_pdf_file_to_database(pdf_uri, parent_uri, drupal_site_id, violation_dict, overwrite=False):
     # connect
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -273,7 +273,7 @@ def add_pdf_file_to_database(pdf_uri, parent_uri, drupal_site_id, violation_dict
             print("PDF report already exists in the database.")
     else:
         cursor.execute("""
-                       INSERT INTO pdf_report (
+                       INSERT OR IGNORE INTO pdf_report (
                            violations,
                            failed_checks,
                            tagged,
@@ -356,7 +356,7 @@ def compare_and_remove_updated_pdfs():
     :return:
     """
 
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -364,7 +364,7 @@ def compare_and_remove_updated_pdfs():
 
 
 def get_all_sites_domain_names():
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
     sites = cursor.execute("SELECT domain_name FROM drupal_site").fetchall()
@@ -395,7 +395,7 @@ def get_site_id_by_domain_name(domain_name):
         # No underscore, just convert all dashes (simple domain)
         domain_name = domain_name.replace('-', '.')
 
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
     site_id = cursor.execute("SELECT id FROM drupal_site WHERE domain_name = ?", (domain_name,)).fetchone()
@@ -408,7 +408,7 @@ def get_site_id_by_domain_name(domain_name):
 def check_if_pdf_report_exists(pdf_uri, parent_uri):
 
     # first check if a pdf exists with the pdf_uri and parent_uri
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
     pdf_file = cursor.execute("SELECT * FROM drupal_pdf_files WHERE pdf_uri = ? AND parent_uri = ?", (pdf_uri, parent_uri)).fetchone()
@@ -436,7 +436,7 @@ def check_if_pdf_report_exists(pdf_uri, parent_uri):
 
 def add_pdf_report_failure(pdf_uri, parent_uri, site_id, error_message):
 
-        conn = sqlite3.connect(config.DATABASE_PATH)
+        conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
         conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
 
@@ -461,7 +461,7 @@ def add_pdf_report_failure(pdf_uri, parent_uri, site_id, error_message):
 
 
 def truncate_reports_table():
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
     cursor.execute("DELETE FROM pdf_report")
@@ -474,7 +474,7 @@ def mark_pdf_as_removed(pdf_uri, parent_uri):
     """
     Marks a PDF as removed in the database by setting its status to 'removed'.
     """
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 
@@ -496,7 +496,7 @@ def mark_pdf_as_removed(pdf_uri, parent_uri):
 def import_box_folders():
 
 
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     cursor = conn.cursor()
 

@@ -127,16 +127,11 @@ def create_all_pdf_reports():
 
     # Determine worker count: parallel on Mac, sequential on Windows.
     if config.MACHINE == "mac":
-        domain_count = sum(
-            1 for f in os.listdir(pdf_sites_folder)
-            if os.path.isdir(os.path.join(pdf_sites_folder, f))
-        )
-        # 2× cpu_count because the work is mostly I/O-bound (network downloads
-        # + VeraPDF subprocess waits), so workers spend most of their time
-        # blocked rather than burning CPU. Capped at the number of domains
-        # so we never spin up idle processes.
-        workers = min(domain_count, (os.cpu_count() or 1) * 2)
-        print(f"Mac detected — scanning {domain_count} domains with {workers} parallel workers (cpu_count={os.cpu_count()})")
+        # Per-PDF parallelism: the pool processes individual PDFs (not domains),
+        # so all workers stay busy regardless of domain size distribution.
+        # 2× cpu_count for I/O-bound work (network downloads + VeraPDF waits).
+        workers = (os.cpu_count() or 1) * 2
+        print(f"Mac detected — per-PDF parallel scan with {workers} workers (cpu_count={os.cpu_count()})")
     else:
         workers = 1
 

@@ -264,56 +264,103 @@ def refresh_existing_pdf_reports(single_domain=None):
 
 
 
-def _scan_domain_worker(args):
+def _scan_pdf_worker(args):
     """
-    Picklable top-level worker for ProcessPoolExecutor (Mac parallel scanning).
+    Picklable top-level worker for per-PDF parallel scanning.
 
-    Each worker process overrides the module-level temp_pdf_path /
-    temp_profile_path globals with process-specific paths so that concurrent
-    workers never write to the same temp file on disk.
+    Each worker handles exactly one (pdf_line, domain_id) task: check if
+    already scanned, download, run VeraPDF, write result to DB.
+    Process-specific temp file paths prevent disk collisions between workers.
+
+    This replaces the old _scan_domain_worker which serialised all PDFs
+    within a domain — large domains no longer block idle workers.
     """
     import os as _os
     import config as _config
     global temp_pdf_path, temp_profile_path
-    folder_path, domain_id = args
+    pdf_line, domain_id = args
     pid = _os.getpid()
     temp_pdf_path = str(_config.TEMP_DIR / f"temp_{pid}.pdf")
     temp_profile_path = str(_config.TEMP_DIR / f"temp_profile_{pid}.json")
-    scan_pdfs(folder_path, domain_id)
+
+    try:
+        file_split = pdf_line.split(' ', 1)
+        file_url = file_split[0]
+        loc = file_split[1].split(" ")[0]
+    except (ValueError, IndexError):
+        add_pdf_report_failure("unknown", "unknown", domain_id, "Couldn't unpack file url and location")
+        return
+
+    if check_if_pdf_report_exists(file_url, loc):
+        return
+
+    if box_share_pattern_match(file_url):
+        box_download = download_from_box(file_url, loc, domain_id)
+        if not box_download[0]:
+            add_pdf_report_failure(file_url, loc, domain_id, box_download[1])
+            return
+    else:
+        pdf_download = download_pdf_into_memory(file_url, loc, domain_id)
+        if not pdf_download:
+            return
+        with open(temp_pdf_path, "wb") as f:
+            f.write(pdf_download)
+
+    report = create_verapdf_report(file_url)
+    if report["report"]["status"] == "Succeeded":
+        add_pdf_file_to_database(file_url, loc, domain_id, report["report"]["report"])
+    else:
+        add_pdf_report_failure(file_url, loc, domain_id, report["report"]["report"])
 
 
 def full_pdf_scan(site_folders, workers=1):
     """
-    Scans all subdirectories within the given directory for PDF files and
-    generates accessibility reports.
+    Scans all PDFs across all domain folders for accessibility issues.
+
+    Builds a flat work queue of (pdf_line, domain_id) tuples — one per
+    unique (url, parent_uri) pair across ALL domains — then submits the
+    entire queue to a ProcessPoolExecutor. This gives true per-PDF
+    parallelism: workers pick up the next available PDF regardless of
+    domain, so a large domain with 500 PDFs no longer blocks workers
+    whose small domains finished in seconds.
 
     Parameters:
-    site_folders (str): The path to the directory containing subdirectories
-                        to be scanned.
+    site_folders (str): Path to the directory containing per-domain
+                        subdirectories, each with a scanned_pdfs.txt.
     workers (int):      Number of parallel worker processes. 1 = sequential
                         (Windows default). >1 uses ProcessPoolExecutor (Mac).
-                        Each worker uses process-specific temp file paths so
-                        concurrent scans never collide on disk.
-
-    Process:
-    1. Iterates over each folder (subdirectory) within `site_folders`.
-    2. Retrieves the domain ID for each folder via get_site_id_by_domain_name.
-    3. Calls scan_pdfs for each domain, sequentially or in parallel.
     """
-    domain_args = []
+    work_items = []
+    seen = set()  # deduplicate (url, loc) — prevents two workers racing on the same PDF
+
     for folder in os.listdir(site_folders):
         domain_id = get_site_id_by_domain_name(folder)
-        print(folder, domain_id, os.path.join(site_folders, folder))
-        if domain_id is not None:
-            domain_args.append((os.path.join(site_folders, folder), domain_id))
+        if domain_id is None:
+            continue
+        folder_path = os.path.join(site_folders, folder)
+        pdf_lines = loop_through_files_in_folder(folder_path)
+        if not pdf_lines:
+            continue
+        for line in pdf_lines:
+            try:
+                parts = line.split(' ', 1)
+                key = (parts[0], parts[1].split(" ")[0])
+            except (ValueError, IndexError):
+                key = (line, "")
+            if key not in seen:
+                seen.add(key)
+                work_items.append((line, domain_id))
+
+    total = len(work_items)
+    print(f"Total unique PDF work items across all domains: {total}")
 
     if workers > 1:
         from concurrent.futures import ProcessPoolExecutor
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            list(executor.map(_scan_domain_worker, domain_args))
+            list(executor.map(_scan_pdf_worker, work_items))
     else:
-        for folder_path, domain_id in domain_args:
-            scan_pdfs(folder_path, domain_id)
+        for item in work_items:
+            _scan_pdf_worker(item)
 
 
 
