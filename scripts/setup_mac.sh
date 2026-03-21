@@ -46,40 +46,48 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "--- Step 2: Java runtime (required by VeraPDF) ---"
 
-# On Apple Silicon, Homebrew lives at /opt/homebrew and is not on PATH in
-# non-interactive scripts. Load its environment explicitly before any brew call.
-if [[ -x "/opt/homebrew/bin/brew" ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [[ -x "/usr/local/bin/brew" ]]; then
-    eval "$(/usr/local/bin/brew shellenv)"
-fi
+# Disable set -e for this entire block — brew and java checks may return
+# non-zero for benign reasons (already installed, PATH not yet updated, etc.)
+# and we never want a missing JRE to abort the rest of the setup.
+set +e
 
-if command -v java &>/dev/null; then
+# On Apple Silicon brew lives at /opt/homebrew/bin, which is not on PATH in
+# non-interactive scripts. Add it directly rather than eval-ing shellenv
+# (shellenv emits fpath[] assignments that fail under set -euo pipefail).
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
+
+java -version &>/dev/null
+JAVA_FOUND=$?
+
+if [[ $JAVA_FOUND -eq 0 ]]; then
     JAVA_VERSION=$(java -version 2>&1 | head -1)
     echo "[OK] Java found: $JAVA_VERSION"
 else
     echo "[!] Java not found. Attempting to install Java 21 via Homebrew..."
     echo ""
-    if command -v brew &>/dev/null; then
-        # set -e would kill the script if brew returns non-zero (e.g. already
-        # installed, checksum warning, etc.) — disable it for this block only.
-        set +e
-        brew install --cask temurin@21
-        BREW_EXIT=$?
-        set -e
+    BREW_CMD=""
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        BREW_CMD="/opt/homebrew/bin/brew"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        BREW_CMD="/usr/local/bin/brew"
+    fi
 
+    if [[ -n "$BREW_CMD" ]]; then
+        "$BREW_CMD" install --cask temurin@21
+        BREW_EXIT=$?
         if [[ $BREW_EXIT -ne 0 ]]; then
             echo "[!] 'brew install --cask temurin@21' exited with code $BREW_EXIT."
-            echo "    Try running it manually in a new terminal to see the full output."
+            echo "    Run it manually in a new terminal to see the full output."
             ISSUES=$((ISSUES + 1))
         else
-            # Temurin installs to /Library/Java/JavaVirtualMachines/ — the JVM
-            # wrapper at /usr/bin/java picks it up automatically after install.
-            if command -v java &>/dev/null; then
+            # Temurin installs to /Library/Java/JavaVirtualMachines/.
+            # /usr/bin/java picks it up automatically — no PATH change needed.
+            java -version &>/dev/null
+            if [[ $? -eq 0 ]]; then
                 echo "[OK] Java installed: $(java -version 2>&1 | head -1)"
             else
-                echo "[OK] Java installed. Open a new terminal then re-run this script"
-                echo "     so /usr/bin/java is visible on PATH."
+                echo "[OK] Java installed. Open a new terminal then re-run this"
+                echo "     script so the JVM stub at /usr/bin/java picks it up."
                 ISSUES=$((ISSUES + 1))
             fi
         fi
@@ -89,13 +97,15 @@ else
         echo "    Option A — Install Homebrew first, then re-run this script:"
         echo "      /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
         echo ""
-        echo "    Option B — Download the .pkg installer directly:"
+        echo "    Option B — Download the .pkg directly:"
         echo "      https://adoptium.net/"
         echo "      Choose: Eclipse Temurin 21 (LTS) → macOS → .pkg"
         echo ""
         ISSUES=$((ISSUES + 1))
     fi
 fi
+
+set -e
 
 # ---------------------------------------------------------------------------
 # Step 3: VeraPDF check
