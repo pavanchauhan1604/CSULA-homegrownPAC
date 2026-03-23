@@ -116,14 +116,26 @@ def _refresh_run_index(run_index_ws, data_ws) -> list[str]:
 
 
 def _load_scan_timing() -> dict | None:
-    """Read temp/scan_timing.json written by master_functions.create_all_pdf_reports()."""
+    """Read temp/scan_timing.json, add workflow_end + total_duration, and persist."""
     timing_path = config.TEMP_DIR / "scan_timing.json"
     if not timing_path.exists():
         return None
     try:
         import json
+        from datetime import datetime as _dt
         with open(timing_path) as f:
-            return json.load(f)
+            data = json.load(f)
+        now = _dt.now()
+        data["workflow_end"] = now.strftime("%Y-%m-%d %H:%M:%S")
+        if "workflow_start" in data:
+            start = _dt.strptime(data["workflow_start"], "%Y-%m-%d %H:%M:%S")
+            total_s = int((now - start).total_seconds())
+            h, rem = divmod(total_s, 3600)
+            m, s = divmod(rem, 60)
+            data["total_duration_human"] = f"{h}h {m}m {s}s"
+        with open(timing_path, "w") as f:
+            json.dump(data, f, indent=2)
+        return data
     except Exception:
         return None
 
@@ -158,20 +170,23 @@ def _refresh_dashboard(wb: openpyxl.Workbook, run_values: list[str], current_row
     ws["B6"] = sum(r[3] for r in current_rows)
     ws["B6"].alignment = Alignment(horizontal="center")
 
-    # Scan timing — written by master_functions.create_all_pdf_reports()
+    # Workflow timing — workflow_start written by run_workflow.sh,
+    # workflow_end + total_duration computed here at report generation time.
     timing = _load_scan_timing()
     if timing:
-        ws["A7"] = "Scan Started"
+        ws["A7"] = "Workflow Started"
         ws["A7"].font = Font(bold=True)
-        ws["B7"] = timing.get("scan_start", "")
-        ws["A8"] = "Scan Completed"
+        ws["B7"] = timing.get("workflow_start", "")
+        ws["A8"] = "Workflow Completed"
         ws["A8"].font = Font(bold=True)
-        ws["B8"] = timing.get("scan_end", "")
-        ws["A9"] = "Scan Duration"
+        ws["B8"] = timing.get("workflow_end", "")
+        ws["A9"] = "Total Duration"
         ws["A9"].font = Font(bold=True)
-        ws["B9"] = timing.get("duration_human", "")
+        ws["B9"] = timing.get("total_duration_human", "")
         ws["B9"].font = Font(bold=True, color="003262")
-        tip_row = 11
+        ws["A10"] = f"  (Stage 4 scan only: {timing.get('scan_duration_human', 'n/a')})"
+        ws["A10"].font = Font(italic=True, color="666666", size=9)
+        tip_row = 12
     else:
         tip_row = 8
 

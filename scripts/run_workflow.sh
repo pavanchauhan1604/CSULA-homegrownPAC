@@ -49,6 +49,14 @@ if [[ -n "$DOMAIN_KEY" ]]; then
 fi
 echo ""
 
+# Record workflow start time for master report timing
+mkdir -p temp
+"$PYTHON" -c "
+import json, datetime, pathlib
+with open('temp/scan_timing.json', 'w') as f:
+    json.dump({'workflow_start': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, f)
+"
+
 # ---------------------------------------------------------------------------
 # Step 0: Setup / Verify Database (non-destructive)
 # ---------------------------------------------------------------------------

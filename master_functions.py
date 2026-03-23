@@ -154,13 +154,21 @@ def create_all_pdf_reports():
     minutes, seconds = divmod(remainder, 60)
     duration_human = f"{hours}h {minutes}m {seconds}s"
 
-    timing = {
-        "scan_start": scan_start.strftime("%Y-%m-%d %H:%M:%S"),
-        "scan_end":   scan_end.strftime("%Y-%m-%d %H:%M:%S"),
-        "duration_seconds": total_seconds,
-        "duration_human":   duration_human,
-    }
     timing_path = config.TEMP_DIR / "scan_timing.json"
+    existing = {}
+    if timing_path.exists():
+        try:
+            with open(timing_path) as f:
+                existing = json.load(f)
+        except Exception:
+            pass
+    timing = {
+        "workflow_start": existing.get("workflow_start", scan_start.strftime("%Y-%m-%d %H:%M:%S")),
+        "scan_start":     scan_start.strftime("%Y-%m-%d %H:%M:%S"),
+        "scan_end":       scan_end.strftime("%Y-%m-%d %H:%M:%S"),
+        "scan_duration_seconds": total_seconds,
+        "scan_duration_human":   duration_human,
+    }
     with open(timing_path, "w") as f:
         json.dump(timing, f, indent=2)
     print(f"Scan completed: {scan_end.strftime('%Y-%m-%d %H:%M:%S')}  |  Duration: {duration_human}")
