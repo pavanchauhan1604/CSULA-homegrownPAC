@@ -1,0 +1,154 @@
+# Generated spider
+import scrapy
+import re
+from datetime import datetime
+import os
+from urllib.parse import urlparse
+
+def get_box_contents(url):
+    """
+    Custom handler for Box.com links. Returns (bool, url) indicating if PDF found.
+    """
+    return (False, url)  # Placeholder implementation
+
+
+class CelebrateCalstatelaEduFirstDecadeSpider(scrapy.Spider):
+    name = "celebrate_calstatela_edu_first_decade_spider"
+    allowed_domains = ["celebrate.calstatela.edu"]
+    start_urls = ['https://celebrate.calstatela.edu/first-decade']
+    scope_path = "/first-decade"
+    custom_settings = {
+        'DEPTH_LIMIT': 3,
+        'CONCURRENT_REQUESTS': 16,
+        'DOWNLOAD_DELAY': 0.25,
+    }
+
+    def __init__(self, *args, **kwargs):
+        super(CelebrateCalstatelaEduFirstDecadeSpider, self).__init__(*args, **kwargs)
+        self.output_folder = "../../output/scans/celebrate-calstatela-edu_first-decade"
+        self.pdf_links = []
+        self.failed_box_links = []
+        # Register spider_closed callback
+        from scrapy import signals
+        from scrapy.signalmanager import dispatcher
+        dispatcher.connect(self.spider_closed, signal=signals.spider_closed)
+
+    def start_requests(self):
+        """Tries sitemap.xml first to seed all pages; also queues start_urls as fallback."""
+        domain = self.allowed_domains[0]
+        yield scrapy.Request(
+            f"https://{domain}/sitemap.xml",
+            callback=self._parse_sitemap,
+            errback=self._sitemap_error,
+            dont_filter=True,
+        )
+        for url in self.start_urls:
+            yield scrapy.Request(url, callback=self.parse, dont_filter=True)
+
+    def _parse_sitemap(self, response):
+        """Seed requests from all <loc> entries in sitemap.xml."""
+        locs = re.findall(r'<loc>(.*?)</loc>', response.text, re.DOTALL)
+        for url in locs:
+            url = url.strip()
+            if url:
+                yield scrapy.Request(url, callback=self.parse)
+
+    def _sitemap_error(self, failure):
+        """Sitemap not available; start_urls already queued in start_requests."""
+        self.logger.debug("sitemap.xml not accessible, relying on start_urls")
+
+    def parse(self, response):
+        """
+        Main parser that extracts PDF links and follows internal links.
+        """
+        # Capture PDFs served with application/pdf content type (e.g. ld.php downloads)
+        content_type = response.headers.get('Content-Type', b'').decode('utf-8', errors='ignore').lower()
+        if 'application/pdf' in content_type:
+            referring_page = response.meta.get('referrer', response.url)
+            self.pdf_links.append((response.url, referring_page))
+            self.logger.info('Found PDF (Content-Type): %s', response.url)
+            return
+
+        def is_http_url(url: str) -> bool:
+            try:
+                parsed = urlparse(url)
+            except Exception:
+                return False
+            return parsed.scheme in ("http", "https", "")
+
+        def is_internal(url: str) -> bool:
+            parsed = urlparse(url)
+            if not parsed.netloc:
+                return True
+            return parsed.netloc.lower().endswith(self.allowed_domains[0].lower())
+
+        def is_in_scope(url: str) -> bool:
+            if not getattr(self, "scope_path", ""):
+                return True
+            parsed = urlparse(url)
+            return parsed.path.startswith(self.scope_path)
+
+        # Extract all links
+        for link in response.css('a::attr(href)').getall():
+            absolute_url = response.urljoin(link)
+
+            if not is_http_url(absolute_url):
+                continue
+            
+            # Check if it's a PDF
+            if absolute_url.lower().endswith('.pdf'):
+                referring_page = response.url
+                self.pdf_links.append((absolute_url, referring_page))
+                self.logger.info('Found PDF: %s (from %s)', absolute_url, referring_page)
+            
+            # Check if it's a Box.com link
+            elif 'box.com' in absolute_url:
+                yield scrapy.Request(
+                    absolute_url,
+                    callback=self.parse_box,
+                    dont_filter=False,
+                    meta={'history': [response.url]}
+                )
+            
+            # Follow internal links (optionally scoped)
+            elif is_internal(absolute_url) and is_in_scope(absolute_url):
+                yield response.follow(absolute_url, callback=self.parse, meta={'referrer': response.url})
+
+    def parse_box(self, response):
+        """
+        A custom handler for Box.com links. 
+        get_box_contents(url) should return a tuple of (bool, pdf_url),
+        where bool indicates if a PDF was found.
+        """
+        pdf_url = get_box_contents(response.url)
+        referring_page = response.meta.get('history', [None])[0]
+
+        if pdf_url and pdf_url[0]:
+            self.pdf_links.append((pdf_url[1], referring_page))
+        else:
+            # If no PDF was found, record this Box link as "failed" for reference
+            self.failed_box_links.append((pdf_url[1] if pdf_url else response.url, referring_page))
+
+        self.logger.info('Handling a Box.com link: %s', response.url)
+
+    def spider_closed(self, spider):
+        """
+        Called automatically when the spider finishes.
+        Ensures the output folder exists, then writes discovered PDF links
+        (and their referring URL) to scanned_pdfs.txt with a timestamp.
+        """
+        os.makedirs(self.output_folder, exist_ok=True)
+        output_file_path = os.path.join(self.output_folder, 'scanned_pdfs.txt')
+        failed_box_path = os.path.join(self.output_folder, 'failed_box_links.txt')
+
+        with open(output_file_path, 'w', encoding='utf-8') as file:
+            for pdf_link, ref_url in self.pdf_links:
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                file.write(f"{pdf_link} {ref_url} {timestamp}\n")
+                
+        with open(failed_box_path, 'w', encoding='utf-8') as file:
+            for pdf_link, ref_url in self.failed_box_links:
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                file.write(f"{pdf_link} {ref_url} {timestamp}\n")
+
+        self.logger.info("PDF LINKS saved to %s", output_file_path)
